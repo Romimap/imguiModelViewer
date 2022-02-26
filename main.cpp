@@ -14,6 +14,9 @@
 #include <GLES2/gl2.h>
 #endif
 #include <GLFW/glfw3.h> // Will drag system OpenGL headers
+#include "TextEditor.h"
+#include <iostream>
+#include <sstream>
 
 
 // [Win32] Our example includes a copy of glfw3.lib pre-compiled with VS2010 to maximize ease of testing and compatibility with old VS compilers.
@@ -111,8 +114,86 @@ int main(int, char**)
     ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 
     ImVec2 size(800, 600);
-    Renderer3D renderer3D(size);
+    glm::vec3 cameraPosition(2.5, 2, 1.5);
+    Renderer3D renderer3D(size, cameraPosition);
 
+    glEnable(GL_DEPTH_TEST);
+    glEnable(GL_CULL_FACE);
+
+
+
+    //TEXT EDITORS LANG
+	auto lang = TextEditor::LanguageDefinition::GLSL();
+
+	// set your own known preprocessor symbols...
+	static const char* ppnames[] = { "NULL", "assert" };
+	// ... and their corresponding values
+	static const char* ppvalues[] = { 
+		"#define NULL ((void*)0)", 
+		" #define assert(expression) (void)(                                                  \n"
+        "    (!!(expression)) ||                                                              \n"
+        "    (_wassert(_CRT_WIDE(#expression), _CRT_WIDE(__FILE__), (unsigned)(__LINE__)), 0) \n"
+        " )"
+		};
+
+	for (int i = 0; i < sizeof(ppnames) / sizeof(ppnames[0]); ++i)
+	{
+		TextEditor::Identifier id;
+		id.mDeclaration = ppvalues[i];
+		lang.mPreprocIdentifiers.insert(std::make_pair(std::string(ppnames[i]), id));
+	}
+
+	// set your own identifiers
+	static const char* identifiers[] = {
+		"HWND", "HRESULT", "LPRESULT","D3D11_RENDER_TARGET_VIEW_DESC", "DXGI_SWAP_CHAIN_DESC","MSG","LRESULT","WPARAM", "LPARAM","UINT","LPVOID",
+		"ID3D11Device", "ID3D11DeviceContext", "ID3D11Buffer", "ID3D11Buffer", "ID3D10Blob", "ID3D11VertexShader", "ID3D11InputLayout", "ID3D11Buffer",
+		"ID3D10Blob", "ID3D11PixelShader", "ID3D11SamplerState", "ID3D11ShaderResourceView", "ID3D11RasterizerState", "ID3D11BlendState", "ID3D11DepthStencilState",
+		"IDXGISwapChain", "ID3D11RenderTargetView", "ID3D11Texture2D", "TextEditor" };
+	static const char* idecls[] = 
+	{
+		"typedef HWND_* HWND", "typedef long HRESULT", "typedef long* LPRESULT", "struct D3D11_RENDER_TARGET_VIEW_DESC", "struct DXGI_SWAP_CHAIN_DESC",
+		"typedef tagMSG MSG\n * Message structure","typedef LONG_PTR LRESULT","WPARAM", "LPARAM","UINT","LPVOID",
+		"ID3D11Device", "ID3D11DeviceContext", "ID3D11Buffer", "ID3D11Buffer", "ID3D10Blob", "ID3D11VertexShader", "ID3D11InputLayout", "ID3D11Buffer",
+		"ID3D10Blob", "ID3D11PixelShader", "ID3D11SamplerState", "ID3D11ShaderResourceView", "ID3D11RasterizerState", "ID3D11BlendState", "ID3D11DepthStencilState",
+		"IDXGISwapChain", "ID3D11RenderTargetView", "ID3D11Texture2D", "class TextEditor" };
+	for (int i = 0; i < sizeof(identifiers) / sizeof(identifiers[0]); ++i)
+	{
+		TextEditor::Identifier id;
+		id.mDeclaration = std::string(idecls[i]);
+		lang.mIdentifiers.insert(std::make_pair(std::string(identifiers[i]), id));
+	}
+
+    //TEXT EDITORS OBJECTS
+    TextEditor editorFShader;
+	editorFShader.SetLanguageDefinition(lang);
+    static const char* fshaderfilepath = "./shaders/fshader.glsl";
+    std::fstream fShaderFile(fshaderfilepath);
+    std::stringstream ffilestream;
+    ffilestream << fShaderFile.rdbuf();
+    editorFShader.SetText(ffilestream.str());
+    fShaderFile.close();
+
+	//editorFShader.SetPalette(TextEditor::GetLightPalette());
+
+	// error markers
+	TextEditor::ErrorMarkers fsmarkers;
+	//fsmarkers.insert(std::make_pair<int, std::string>(6, "Example error here:\nInclude file not found: \"TextEditor.h\""));
+    editorFShader.SetErrorMarkers(fsmarkers);
+
+    TextEditor editorVShader;
+	editorVShader.SetLanguageDefinition(lang);
+    static const char* vshaderfilepath = "./shaders/vshader.glsl";
+    std::fstream vShaderFile(vshaderfilepath);
+    std::stringstream vfilestream;
+    vfilestream << vShaderFile.rdbuf();
+    editorVShader.SetText(vfilestream.str());
+    vShaderFile.close();
+
+	//editorVShader.SetPalette(TextEditor::GetLightPalette());
+
+	// error markers
+	TextEditor::ErrorMarkers vsmarkers;
+	editorVShader.SetErrorMarkers(vsmarkers);
 
     // Main loop
     while (!glfwWindowShouldClose(window))
@@ -124,46 +205,99 @@ int main(int, char**)
         // Generally you may always pass all inputs to dear imgui, and hide them from your application based on those two flags.
         glfwPollEvents();
 
-
         // Start the Dear ImGui frame
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
 
-        // 2. Show a simple window that we create ourselves. We use a Begin/End pair to created a named window.
+        // MODEL VIEWER
         {
-            static float f = 0.0f;
-            static int counter = 0;
+            ImGui::Begin("Model Viewer");
 
-            ImGui::Begin("Hello, world!");                          // Create a window called "Hello, world!" and append into it.
-
-            ImGui::Text("This is some useful text.");               // Display some text (you can use a format strings too)
-            ImGui::Checkbox("Demo Window", &show_demo_window);      // Edit bools storing our window open/close state
-            ImGui::Checkbox("Another Window", &show_another_window);
-
-            ImGui::SliderFloat("float", &f, 0.0f, 1.0f);            // Edit 1 float using a slider from 0.0f to 1.0f
-            ImGui::ColorEdit3("clear color", (float*)&clear_color); // Edit 3 floats representing a color
-
-            if (ImGui::Button("Button"))                            // Buttons return true when clicked (most widgets return true when edited/activated)
-                counter++;
-            ImGui::SameLine();
-            ImGui::Text("counter = %d", counter);
-
+            ImGui::SliderFloat3("position", (float*)&cameraPosition, -3, 3);
             renderer3D.Draw();
-
             ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+            
             ImGui::End();
         }
 
-        // 3. Show another simple window.
-        if (show_another_window)
+        // FRAGMENT SHADER EDITOR
         {
-            ImGui::Begin("Another Window", &show_another_window);   // Pass a pointer to our bool variable (the window will have a closing button that will clear the bool when clicked)
-            ImGui::Text("Hello from another window!");
-            if (ImGui::Button("Close Me"))
-                show_another_window = false;
+            auto cpos = editorFShader.GetCursorPosition();
+            ImGui::Begin("Fragment Shader", nullptr, ImGuiWindowFlags_HorizontalScrollbar | ImGuiWindowFlags_MenuBar);
+            ImGui::SetWindowSize(ImVec2(800, 600), ImGuiCond_FirstUseEver);
+
+            if (ImGui::Button("Compile")) {
+                std::string error = renderer3D.SetFShader(editorFShader.GetText());
+                if (error.compare("") != 0) {
+                    int a, line, c;
+                    char message[1024];
+                    sscanf(error.c_str(), "%d:%d(%d):%[^\n]", &a, &line, &c, &message);
+                    std::string strmsg(message);
+                    fsmarkers.insert(std::make_pair<int, std::string>((int)line, (std::string)strmsg));
+                    editorFShader.SetErrorMarkers(fsmarkers);
+                    printf("AFTER\n");
+                } else {
+                    fsmarkers.clear();
+                    editorFShader.SetErrorMarkers(fsmarkers);
+
+                    fShaderFile.open(fshaderfilepath);
+                    fShaderFile << editorFShader.GetText();
+                    fShaderFile.close();
+                }
+            }
+
+            //ImGui::Text("%6d/%-6d %6d lines  | %s | %s | %s | %s", cpos.mLine + 1, cpos.mColumn + 1, editorFShader.GetTotalLines(),
+			//editorFShader.IsOverwrite() ? "Ovr" : "Ins",
+			//editorFShader.CanUndo() ? "*" : " ",
+			//editorFShader.GetLanguageDefinition().mName.c_str(), fshaderfile);
+
+            editorFShader.Render("TextEditor");
+
             ImGui::End();
         }
+
+         // VERTEX SHADER EDITOR
+        {
+            auto cpos = editorVShader.GetCursorPosition();
+            ImGui::Begin("Vertex Shader", nullptr, ImGuiWindowFlags_HorizontalScrollbar | ImGuiWindowFlags_MenuBar);
+            ImGui::SetWindowSize(ImVec2(800, 600), ImGuiCond_FirstUseEver);
+
+            if (ImGui::Button("Compile")) {
+                std::string error = renderer3D.SetVShader(editorVShader.GetText());
+                if (error.compare("") != 0) {
+                    int a, line, c;
+                    char message[1024];
+                    sscanf(error.c_str(), "%d:%d(%d):%[^\n]", &a, &line, &c, &message);
+                    std::string strmsg(message);
+                    vsmarkers.insert(std::make_pair<int, std::string>((int)line, (std::string)strmsg));
+                    editorVShader.SetErrorMarkers(vsmarkers);
+                    printf("AFTER\n");
+                } else {
+                    vsmarkers.clear();
+                    editorVShader.SetErrorMarkers(vsmarkers);
+
+                    vShaderFile.open(vshaderfilepath);
+                    vShaderFile << editorVShader.GetText();
+                    vShaderFile.close();
+                }
+            }
+
+            //ImGui::Text("%6d/%-6d %6d lines  | %s | %s | %s | %s", cpos.mLine + 1, cpos.mColumn + 1, editorFShader.GetTotalLines(),
+			//editorFShader.IsOverwrite() ? "Ovr" : "Ins",
+			//editorFShader.CanUndo() ? "*" : " ",
+			//editorFShader.GetLanguageDefinition().mName.c_str(), fshaderfile);
+
+            editorVShader.Render("TextEditor");
+
+            ImGui::End();
+        }
+
+        // // DEMO WINDOW
+        // {
+        //     ImGui::ShowDemoWindow(&show_demo_window);
+        // }
+
 
         // Rendering
         ImGui::Render();

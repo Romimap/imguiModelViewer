@@ -13,12 +13,15 @@
 #include <map>
 #include <sstream>
 #include <iostream>
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
 #define BUFFER_OFFSET(i) ((char *)NULL + (i))
 
 
 struct VertexData {
     glm::vec3 position;
-    glm::vec3 color;
+    glm::vec2 uv;
+    glm::vec3 normal;
 };
 
 class Renderer3D {
@@ -30,43 +33,52 @@ private:
 
     GLuint _VBO;
     GLuint _shaderProgram;
+    GLuint _vShader = 0;
+    GLuint _fShader = 0;
+    GLuint _envMap;
 
     glm::mat4x4 _projectionMatrix;
     glm::mat4x4 _viewMatrix;
     glm::mat4x4 _modelMatrix;
 
+    std::vector<VertexData> _vertices;
+
+    glm::vec3 *_cameraPosition;
+
+
 
 public:
-    Renderer3D(ImVec2 size, char* model, char* vertexShader, char* fragmentShader);
+    Renderer3D(ImVec2 size, glm::vec3 &cameraPosition, char* model, char* vertexShader, char* fragmentShader);
     ~Renderer3D();
     void Draw();
+    std::string SetFShader(const std::string &code);
+    std::string SetVShader(const std::string &code);
 
 private:
-    //void LoadMesh(char* model);
+    void LoadMesh(char* model);
     void MakeShaderProgram(char* fragmentShader, char* vertexShader);
 };
 
 
-Renderer3D::Renderer3D(ImVec2 size, char* model = "./models/cube.obj", char* fragmentShader = "./shaders/fshader.glsl", char* vertexShader = "./shaders/vshader.glsl") : _size(size) {
+Renderer3D::Renderer3D(ImVec2 size, glm::vec3 &cameraPosition, char* model = "./models/cube.obj", char* fragmentShader = "./shaders/fshader.glsl", char* vertexShader = "./shaders/vshader.glsl") : _size(size), _cameraPosition(&cameraPosition) {
     MakeShaderProgram(fragmentShader, vertexShader);
 
-    //LoadMesh(model);
-    std::vector<VertexData> positions;
-    VertexData a, b, c;
-    a.position = glm::vec3(-1, -1, 0);
-    a.color = glm::vec3(1, 0, 0);
-    b.position = glm::vec3(0, 1, 0);
-    b.color = glm::vec3(0, 1, 0);
-    c.position = glm::vec3(1, -1, 0);
-    c.color = glm::vec3(0, 0, 1);
-    
-    positions.push_back(a);
-    positions.push_back(b);
-    positions.push_back(c);
-
-    glGenBuffers(1, &_VBO);
-    glBindBuffer(GL_ARRAY_BUFFER, _VBO);
-    glBufferData(GL_ARRAY_BUFFER, positions.size() * sizeof(VertexData), positions.data(), GL_STATIC_DRAW);
+    LoadMesh(model);
+    //std::vector<VertexData> positions;
+    //VertexData a, b, c;
+    //a.position = glm::vec3(-1, -1, 0);
+    //a.color = glm::vec3(1, 0, 0);
+    //b.position = glm::vec3(0, 1, 0);
+    //b.color = glm::vec3(0, 1, 0);
+    //c.position = glm::vec3(1, -1, 0);
+    //c.color = glm::vec3(0, 0, 1);
+    //
+    //positions.push_back(a);
+    //positions.push_back(b);
+    //positions.push_back(c);
+    //glGenBuffers(1, &_VBO);
+    //glBindBuffer(GL_ARRAY_BUFFER, _VBO);
+    //glBufferData(GL_ARRAY_BUFFER, positions.size() * sizeof(VertexData), positions.data(), GL_STATIC_DRAW);
     
     
     //We create a new buffer
@@ -86,16 +98,20 @@ Renderer3D::Renderer3D(ImVec2 size, char* model = "./models/cube.obj", char* fra
 
     if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
 	    printf("ERROR::FRAMEBUFFER:: Framebuffer is not complete!\n");
-
-
-
-
     
-    
-
     _projectionMatrix = glm::perspective<float>(glm::radians(55.0), _size.x / _size.y, 0.1f, 100.0f);
     _modelMatrix = glm::mat4x4(1.0f);
-    _viewMatrix = glm::mat4x4(1.0f);
+    _viewMatrix = glm::lookAt(*_cameraPosition, glm::vec3(0, 0, 0), glm::vec3(0, 1, 0));
+
+    glGenTextures(1, &_envMap);
+    glBindTexture(GL_TEXTURE_2D, _envMap);
+    int w, h, nbC;
+    unsigned char *data = stbi_load("textures/hdri_warehouse.png", &w, &h, &nbC, 0); 
+
+    printf("nbc %d\n", nbC);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, w, h, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR); 
 
 
     //Back to the default frame buffer
@@ -110,27 +126,44 @@ Renderer3D::~Renderer3D() {
 
 
 void Renderer3D::Draw() {
+    _viewMatrix = glm::lookAt(*_cameraPosition, glm::vec3(0, 0, 0), glm::vec3(0, 1, 0));
+
     glBindFramebuffer(GL_FRAMEBUFFER, _FBO); //Bind
     glViewport(0, 0, _size.x, _size.y);
 
-    glClearColor(.5, .5, 1, 1);
+
+    glClearColor(.2, .2, .2, 1);
     glClear(GL_COLOR_BUFFER_BIT);
   
     glUseProgram(_shaderProgram);
 
     glEnableVertexAttribArray(0);
     glEnableVertexAttribArray(1);
+    glEnableVertexAttribArray(2);
     glBindBuffer(GL_ARRAY_BUFFER, _VBO);
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(VertexData), 0);
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(VertexData), BUFFER_OFFSET(sizeof(float) * 3));
-    glDrawArrays(GL_TRIANGLES, 0, 3);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(VertexData), BUFFER_OFFSET(sizeof(float) * 3));
+    glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(VertexData), BUFFER_OFFSET(sizeof(float) * 5));
+
+    glUniformMatrix4fv(glGetUniformLocation(_shaderProgram, "modelMatrix"), 1, GL_FALSE, glm::value_ptr(_modelMatrix));
+    glUniformMatrix4fv(glGetUniformLocation(_shaderProgram, "viewMatrix"), 1, GL_FALSE, glm::value_ptr(_viewMatrix));
+    glUniformMatrix4fv(glGetUniformLocation(_shaderProgram, "projectionMatrix"), 1, GL_FALSE, glm::value_ptr(_projectionMatrix));
+    glUniform3f(glGetUniformLocation(_shaderProgram, "cameraPosition"), _cameraPosition->x, _cameraPosition->y, _cameraPosition->z);
+
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, _envMap);
+    glUniform1i(glGetUniformLocation(_shaderProgram, "hdri"), 0);
+
+
+    glDrawArrays(GL_TRIANGLES, 0, _vertices.size());
 
     glDisableVertexAttribArray(0);
     glDisableVertexAttribArray(1);
+    glDisableVertexAttribArray(2);
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0); //Unbind
 
-    ImGui::Image((ImTextureID)_outputColor, _size);
+    ImGui::Image((ImTextureID)_outputColor, _size, ImVec2(0, 1), ImVec2(1, 0));
 }
 
 
@@ -147,69 +180,137 @@ std::vector<std::string> splitstr (std::string str, std::string del) {
     return split;
 }
 
-// void Renderer3D::LoadMesh(char* model) {
-//     std::ifstream file(model);
-//     assert (file.is_open());
+void Renderer3D::LoadMesh(char* model) {
+    std::ifstream file(model);
+    assert (file.is_open());
 
-//     std::vector<glm::vec3> positions;
-//     std::vector<glm::vec2> uvs;
-//     std::vector<glm::vec3> normals;
+    std::vector<glm::vec3> positions;
+    std::vector<glm::vec2> uvs;
+    std::vector<glm::vec3> normals;
 
-//     std::map<std::string, int> vertexIds;
+    std::map<std::string, int> vertexIds;
 
 
-//     std::string line;
-//     while (std::getline(file, line)) {
-//         std::stringstream stream(line);
-//         std::string command;
-//         stream >> command;
+    std::string line;
+    while (std::getline(file, line)) {
+        std::stringstream stream(line);
+        std::string command;
+        stream >> command;
 
-//         float x, y, z;
-//         if (command.compare("v") == 0) {
-//             stream >> x >> y >> z;
-//             positions.push_back(glm::vec3(x, y, z));
-//         } else if (command.compare("vt") == 0) {            
-//             stream >> x >> y;
-//             uvs.push_back(glm::vec2(x, y));
-//         } else if (command.compare("vn") == 0) {
-//             stream >> x >> y >> z;
-//             normals.push_back(glm::vec3(x, y, z));
-//         } else if (command.compare("f") == 0) {
-//             std::vector<std::string> split = splitstr(line, " ");
-//             for (int i = 0; i < 3; i++) {
-//                 std::vector<std::string> nmbrs = splitstr(split[i + 1], "/");
-//                 int a, b, c;
-//                 a = atoi(nmbrs[0].c_str()) - 1;
-//                 b = atoi(nmbrs[1].c_str()) - 1;
-//                 c = atoi(nmbrs[2].c_str()) - 1;
+        float x, y, z;
+        if (command.compare("v") == 0) {
+            stream >> x >> y >> z;
+            positions.push_back(glm::vec3(x, y, z));
+        } else if (command.compare("vt") == 0) {            
+            stream >> x >> y;
+            uvs.push_back(glm::vec2(x, y));
+        } else if (command.compare("vn") == 0) {
+            stream >> x >> y >> z;
+            normals.push_back(glm::vec3(x, y, z));
+        } else if (command.compare("f") == 0) {
+            std::vector<std::string> split = splitstr(line, " ");
+            for (int i = 0; i < 3; i++) {
+                std::vector<std::string> nmbrs = splitstr(split[i + 1], "/");
+                int a, b, c;
+                a = atoi(nmbrs[0].c_str()) - 1;
+                b = atoi(nmbrs[1].c_str()) - 1;
+                c = atoi(nmbrs[2].c_str()) - 1;
 
-//                 std::string key = std::to_string(a) + " " + std::to_string(b) + " " + std::to_string(c);
-//                 if (!vertexIds.count(key)) {
-//                     VertexData vdata;
+                std::string key = std::to_string(a) + " " + std::to_string(b) + " " + std::to_string(c);
+              
+                VertexData vdata;
 
-//                     vdata.position = positions[a];
-//                     vdata.uv = uvs[b];
-//                     vdata.normal = normals[c];
+                vdata.position = positions[a];
+                vdata.uv = uvs[b];
+                vdata.normal = normals[c];
 
-//                     vertexIds.emplace(key, vertices.size());
-//                     //vertices.push_back(vdata);
-//                 }
+                _vertices.push_back(vdata);
+            }
+        }
 
-//                 indices.push_back(vertexIds[key]);
-//             }
-//         }
-//         //TODO: THAT
+        glGenBuffers(1, &_VBO);
+        glBindBuffer(GL_ARRAY_BUFFER, _VBO);
+        glBufferData(GL_ARRAY_BUFFER, _vertices.size() * sizeof(VertexData), _vertices.data(), GL_STATIC_DRAW);
+    }
 
-//         //glGenBuffers(1, &_VAO);
-//         //glBindBuffer(GL_ARRAY_BUFFER, _VAO);
-//         //glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(VertexData), vertices.data(), GL_STATIC_DRAW);
-// //
-//         //glGenBuffers(1, &_indexBuffer);
-//         //glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _indexBuffer);
-//         //glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(GLuint), indices.data(), GL_STATIC_DRAW);
-//     }
+}
 
-// }
+std::string Renderer3D::SetFShader(const std::string &code) {
+    GLchar infoLog[1024];
+    GLuint fShader = glCreateShader(GL_FRAGMENT_SHADER);
+
+    const GLchar* fCode[1];
+    fCode[0] = code.c_str();
+
+    GLint fLenght[1];
+    fLenght[0] = code.length();
+
+    glShaderSource(fShader, 1, fCode, fLenght);
+    glCompileShader(fShader);
+    GLint success;
+    glGetShaderiv(fShader, GL_COMPILE_STATUS, &success);
+    if (!success) {
+        glGetShaderInfoLog(fShader, 1024, NULL, infoLog);
+        fprintf(stderr, "Error compiling shader type %d: '%s'\n", GL_FRAGMENT_SHADER, infoLog);
+        return std::string(infoLog);
+    }
+
+    glDetachShader(_shaderProgram, _fShader);
+    glAttachShader(_shaderProgram, fShader);
+
+    glLinkProgram(_shaderProgram);
+    glGetProgramiv(_shaderProgram, GL_LINK_STATUS, &success);
+    if (success == 0) {
+        glGetProgramInfoLog(_shaderProgram, 1024, NULL, infoLog);
+        fprintf(stderr, "Error linking shader program: '%s'\n", infoLog);
+        glDetachShader(_shaderProgram, fShader);
+        glAttachShader(_shaderProgram, _fShader);
+        return std::string(infoLog);
+    }
+
+    _fShader = fShader;
+
+    return std::string("");
+}
+
+
+std::string Renderer3D::SetVShader(const std::string &code) {
+    GLchar infoLog[1024];
+    GLuint vShader = glCreateShader(GL_FRAGMENT_SHADER);
+
+    const GLchar* vCode[1];
+    vCode[0] = code.c_str();
+
+    GLint vLenght[1];
+    vLenght[0] = code.length();
+
+    glShaderSource(vShader, 1, vCode, vLenght);
+    glCompileShader(vShader);
+    GLint success;
+    glGetShaderiv(vShader, GL_COMPILE_STATUS, &success);
+    if (!success) {
+        glGetShaderInfoLog(vShader, 1024, NULL, infoLog);
+        fprintf(stderr, "Error compiling shader type %d: '%s'\n", GL_FRAGMENT_SHADER, infoLog);
+        return std::string(infoLog);
+    }
+
+    glDetachShader(_shaderProgram, _vShader);
+    glAttachShader(_shaderProgram, vShader);
+
+    glLinkProgram(_shaderProgram);
+    glGetProgramiv(_shaderProgram, GL_LINK_STATUS, &success);
+    if (success == 0) {
+        glGetProgramInfoLog(_shaderProgram, 1024, NULL, infoLog);
+        fprintf(stderr, "Error linking shader program: '%s'\n", infoLog);
+        glDetachShader(_shaderProgram, vShader);
+        glAttachShader(_shaderProgram, _vShader);
+        return std::string(infoLog);
+    }
+
+    _vShader = vShader;
+
+    return std::string("");
+}
 
 
 void Renderer3D::MakeShaderProgram(char* fragmentShader, char* vertexShader) {
@@ -218,7 +319,7 @@ void Renderer3D::MakeShaderProgram(char* fragmentShader, char* vertexShader) {
     GLint success;
 
     //--VSHADER
-    GLuint vShader = glCreateShader(GL_VERTEX_SHADER);
+    _vShader = glCreateShader(GL_VERTEX_SHADER);
     std::ifstream vCodeFile(vertexShader);
     std::stringstream vCodeStream;
     vCodeStream << vCodeFile.rdbuf();
@@ -230,19 +331,19 @@ void Renderer3D::MakeShaderProgram(char* fragmentShader, char* vertexShader) {
     GLint vLenght[1];
     vLenght[0] = vCodeStr.length();
 
-    glShaderSource(vShader, 1, vCode, vLenght);
-    glCompileShader(vShader);
-    glGetShaderiv(vShader, GL_COMPILE_STATUS, &success);
+    glShaderSource(_vShader, 1, vCode, vLenght);
+    glCompileShader(_vShader);
+    glGetShaderiv(_vShader, GL_COMPILE_STATUS, &success);
     if (!success) {
         GLchar InfoLog[1024];
-        glGetShaderInfoLog(vShader, sizeof(InfoLog), NULL, InfoLog);
+        glGetShaderInfoLog(_vShader, sizeof(InfoLog), NULL, InfoLog);
         fprintf(stderr, "Error compiling shader type %d: '%s'\n", GL_VERTEX_SHADER, InfoLog);
         exit(1);
     }
-    glAttachShader(_shaderProgram, vShader);
+    glAttachShader(_shaderProgram, _vShader);
 
     //--FSHADER
-    GLuint fShader = glCreateShader(GL_FRAGMENT_SHADER);
+    _fShader = glCreateShader(GL_FRAGMENT_SHADER);
     std::ifstream fCodeFile(fragmentShader);
     std::stringstream fCodeStream;
     fCodeStream << fCodeFile.rdbuf();
@@ -255,16 +356,16 @@ void Renderer3D::MakeShaderProgram(char* fragmentShader, char* vertexShader) {
     fLenght[0] = fCodeStr.length();
 
 
-    glShaderSource(fShader, 1, fCode, fLenght);
-    glCompileShader(fShader);
-    glGetShaderiv(fShader, GL_COMPILE_STATUS, &success);
+    glShaderSource(_fShader, 1, fCode, fLenght);
+    glCompileShader(_fShader);
+    glGetShaderiv(_fShader, GL_COMPILE_STATUS, &success);
     if (!success) {
         GLchar InfoLog[1024];
-        glGetShaderInfoLog(fShader, sizeof(InfoLog), NULL, InfoLog);
+        glGetShaderInfoLog(_fShader, sizeof(InfoLog), NULL, InfoLog);
         fprintf(stderr, "Error compiling shader type %d: '%s'\n", GL_FRAGMENT_SHADER, InfoLog);
         exit(1);
     }
-    glAttachShader(_shaderProgram, fShader);
+    glAttachShader(_shaderProgram, _fShader);
 
     //--LINKING
     glLinkProgram(_shaderProgram);
