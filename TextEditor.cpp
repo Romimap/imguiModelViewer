@@ -35,8 +35,8 @@ TextEditor::TextEditor()
 	, mScrollToTop(false)
 	, mTextChanged(false)
 	, mColorizerEnabled(true)
-	, mTextStart(20.0f)
-	, mLeftMargin(10)
+	, mTextStart(0.0f)
+	, mLeftMargin(0)
 	, mCursorPositionChanged(false)
 	, mColorRangeMin(0)
 	, mColorRangeMax(0)
@@ -49,7 +49,7 @@ TextEditor::TextEditor()
 	, mShowWhitespaces(true)
 	, mStartTime(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count())
 {
-	SetPalette(GetDarkPalette());
+	SetPalette(GetCC29Palette());
 	SetLanguageDefinition(LanguageDefinition::HLSL());
 	mLines.push_back(Line());
 }
@@ -2027,6 +2027,33 @@ const TextEditor::Palette & TextEditor::GetDarkPalette()
 			0x40000000, // Current line fill
 			0x40808080, // Current line fill (inactive)
 			0x40a0a0a0, // Current line edge
+		} };
+	return p;
+}
+
+const TextEditor::Palette & TextEditor::GetCC29Palette() {
+	const static Palette p = { {
+			0xff656364,	// Default
+			0xff5252b4,	// Keyword	
+			0xffd1d8e3,	// Number
+			0xff7070e0,	// String
+			0xff70a0e0, // Char literal
+			0xffe5f0f2, // Punctuation
+			0xff5252b4,	// Preprocessor
+			0xffb9b5b8, // Identifier
+			0xffca804b, // Known identifier
+			0xffca804b, // Preproc identifier
+			0xff656364, // Comment (single line)
+			0xff656364, // Comment (multi line)
+			0xff232121, // Background
+			0xffe0e0e0, // Cursor
+			0x80a06020, // Selection
+			0x800020ff, // ErrorMarker
+			0x00f08000, // Breakpoint
+			0xff232121, // Line number
+			0x00705d5b, // Current line fill
+			0x00705d5b, // Current line fill (inactive)
+			0x10705d5b, // Current line edge
 		} };
 	return p;
 }

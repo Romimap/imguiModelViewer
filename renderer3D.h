@@ -22,6 +22,8 @@ struct VertexData {
     glm::vec3 position;
     glm::vec2 uv;
     glm::vec3 normal;
+    glm::vec3 tangeant;
+    glm::vec3 bitangeant;
 };
 
 class Renderer3D {
@@ -35,7 +37,10 @@ private:
     GLuint _shaderProgram;
     GLuint _vShader = 0;
     GLuint _fShader = 0;
-    GLuint _envMap;
+    GLuint _envMap = 0;
+    GLuint _albedo = 0;
+    GLuint _normal = 0;
+    GLuint _roughness = 0;
 
     glm::mat4x4 _projectionMatrix;
     glm::mat4x4 _viewMatrix;
@@ -50,7 +55,7 @@ private:
 public:
     Renderer3D(ImVec2 size, glm::vec3 &cameraPosition, char* model, char* vertexShader, char* fragmentShader);
     ~Renderer3D();
-    void Draw();
+    void Draw(ImVec2 size, ImVec4 clearColor);
     std::string SetFShader(const std::string &code);
     std::string SetVShader(const std::string &code);
 
@@ -103,15 +108,42 @@ Renderer3D::Renderer3D(ImVec2 size, glm::vec3 &cameraPosition, char* model = "./
     _modelMatrix = glm::mat4x4(1.0f);
     _viewMatrix = glm::lookAt(*_cameraPosition, glm::vec3(0, 0, 0), glm::vec3(0, 1, 0));
 
-    glGenTextures(1, &_envMap);
-    glBindTexture(GL_TEXTURE_2D, _envMap);
-    int w, h, nbC;
-    unsigned char *data = stbi_load("textures/hdri_warehouse.png", &w, &h, &nbC, 0); 
-
-    printf("nbc %d\n", nbC);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, w, h, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
-    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR); 
+    {
+        glGenTextures(1, &_albedo);
+        glBindTexture(GL_TEXTURE_2D, _albedo);
+        int w, h, nbC;
+        unsigned char *data = stbi_load("textures/Brick_albedo.png", &w, &h, &nbC, 0); 
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, w, h, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+        glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR); 
+    }
+    {
+        glGenTextures(1, &_normal);
+        glBindTexture(GL_TEXTURE_2D, _normal);
+        int w, h, nbC;
+        unsigned char *data = stbi_load("textures/Brick_normal.png", &w, &h, &nbC, 0); 
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, w, h, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+        glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR); 
+    }
+    {
+        glGenTextures(1, &_roughness);
+        glBindTexture(GL_TEXTURE_2D, _roughness);
+        int w, h, nbC;
+        unsigned char *data = stbi_load("textures/Brick_roughness.png", &w, &h, &nbC, 0); 
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, w, h, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+        glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR); 
+    }
+    {
+        glGenTextures(1, &_envMap);
+        glBindTexture(GL_TEXTURE_2D, _envMap);
+        int w, h, nbC;
+        unsigned char *data = stbi_load("textures/hdri_warehouse.png", &w, &h, &nbC, 0); 
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, w, h, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+        glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR); 
+    }
 
 
     //Back to the default frame buffer
@@ -125,14 +157,26 @@ Renderer3D::~Renderer3D() {
 }
 
 
-void Renderer3D::Draw() {
+void Renderer3D::Draw(ImVec2 size, ImVec4 clearColor) {
+    glBindFramebuffer(GL_FRAMEBUFFER, _FBO); //Bind
+    if (_size.x != size.x || _size.y != size.y) {
+        glDeleteTextures(1, &_outputColor);
+        _size = size;
+        //Create & Attach a texture to it
+        glGenTextures(1, &_outputColor);
+        glBindTexture(GL_TEXTURE_2D, _outputColor);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, _size.x, _size.y, 0,  GL_RGB, GL_UNSIGNED_BYTE, NULL);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);  
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, _outputColor, 0);
+        _projectionMatrix = glm::perspective<float>(glm::radians(55.0), _size.x / _size.y, 0.1f, 100.0f);        
+    }
     _viewMatrix = glm::lookAt(*_cameraPosition, glm::vec3(0, 0, 0), glm::vec3(0, 1, 0));
 
-    glBindFramebuffer(GL_FRAMEBUFFER, _FBO); //Bind
     glViewport(0, 0, _size.x, _size.y);
 
 
-    glClearColor(.2, .2, .2, 1);
+    glClearColor(clearColor.x, clearColor.y, clearColor.z, clearColor.w);
     glClear(GL_COLOR_BUFFER_BIT);
   
     glUseProgram(_shaderProgram);
@@ -140,10 +184,14 @@ void Renderer3D::Draw() {
     glEnableVertexAttribArray(0);
     glEnableVertexAttribArray(1);
     glEnableVertexAttribArray(2);
+    glEnableVertexAttribArray(3);
+    glEnableVertexAttribArray(4);
     glBindBuffer(GL_ARRAY_BUFFER, _VBO);
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(VertexData), 0);
     glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(VertexData), BUFFER_OFFSET(sizeof(float) * 3));
     glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(VertexData), BUFFER_OFFSET(sizeof(float) * 5));
+    glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, sizeof(VertexData), BUFFER_OFFSET(sizeof(float) * 8));
+    glVertexAttribPointer(4, 3, GL_FLOAT, GL_FALSE, sizeof(VertexData), BUFFER_OFFSET(sizeof(float) * 11));
 
     glUniformMatrix4fv(glGetUniformLocation(_shaderProgram, "modelMatrix"), 1, GL_FALSE, glm::value_ptr(_modelMatrix));
     glUniformMatrix4fv(glGetUniformLocation(_shaderProgram, "viewMatrix"), 1, GL_FALSE, glm::value_ptr(_viewMatrix));
@@ -151,8 +199,17 @@ void Renderer3D::Draw() {
     glUniform3f(glGetUniformLocation(_shaderProgram, "cameraPosition"), _cameraPosition->x, _cameraPosition->y, _cameraPosition->z);
 
     glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, _albedo);
+    glUniform1i(glGetUniformLocation(_shaderProgram, "albedo"), 0);
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_2D, _normal);
+    glUniform1i(glGetUniformLocation(_shaderProgram, "normal"), 1);
+    glActiveTexture(GL_TEXTURE2);
+    glBindTexture(GL_TEXTURE_2D, _roughness);
+    glUniform1i(glGetUniformLocation(_shaderProgram, "roughness"), 2);
+    glActiveTexture(GL_TEXTURE5);
     glBindTexture(GL_TEXTURE_2D, _envMap);
-    glUniform1i(glGetUniformLocation(_shaderProgram, "hdri"), 0);
+    glUniform1i(glGetUniformLocation(_shaderProgram, "hdri"), 5);
 
 
     glDrawArrays(GL_TRIANGLES, 0, _vertices.size());
@@ -160,6 +217,8 @@ void Renderer3D::Draw() {
     glDisableVertexAttribArray(0);
     glDisableVertexAttribArray(1);
     glDisableVertexAttribArray(2);
+    glDisableVertexAttribArray(3);
+    glDisableVertexAttribArray(4);
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0); //Unbind
 
@@ -226,6 +285,34 @@ void Renderer3D::LoadMesh(char* model) {
 
                 _vertices.push_back(vdata);
             }
+
+            VertexData *v1 = &_vertices.at(_vertices.size() - 3);
+            VertexData *v2 = &_vertices.at(_vertices.size() - 2);
+            VertexData *v3 = &_vertices.at(_vertices.size() - 1);
+
+            glm::vec3 edge1 = v2->position - v1->position;
+            glm::vec3 edge2 = v3->position - v1->position;
+            glm::vec2 deltaUV1 = v2->uv - v1->uv;
+            glm::vec2 deltaUV2 = v3->uv - v1->uv;
+
+            float f = 1.0f / (deltaUV1.x * deltaUV2.y - deltaUV2.x * deltaUV1.y);
+
+            glm::vec3 tangent;
+            tangent.x = f * (deltaUV2.y * edge1.x - deltaUV1.y * edge2.x);
+            tangent.y = f * (deltaUV2.y * edge1.y - deltaUV1.y * edge2.y);
+            tangent.z = f * (deltaUV2.y * edge1.z - deltaUV1.y * edge2.z);
+
+            glm::vec3 bitangent;
+            bitangent.y = f * (-deltaUV2.x * edge1.y + deltaUV1.x * edge2.y);
+            bitangent.x = f * (-deltaUV2.x * edge1.x + deltaUV1.x * edge2.x);
+            bitangent.z = f * (-deltaUV2.x * edge1.z + deltaUV1.x * edge2.z);
+
+            v1->tangeant = tangent;
+            v2->tangeant = tangent;
+            v3->tangeant = tangent;
+            v1->bitangeant = bitangent;
+            v2->bitangeant = bitangent;
+            v3->bitangeant = bitangent;
         }
 
         glGenBuffers(1, &_VBO);
@@ -276,7 +363,7 @@ std::string Renderer3D::SetFShader(const std::string &code) {
 
 std::string Renderer3D::SetVShader(const std::string &code) {
     GLchar infoLog[1024];
-    GLuint vShader = glCreateShader(GL_FRAGMENT_SHADER);
+    GLuint vShader = glCreateShader(GL_VERTEX_SHADER);
 
     const GLchar* vCode[1];
     vCode[0] = code.c_str();
@@ -290,7 +377,7 @@ std::string Renderer3D::SetVShader(const std::string &code) {
     glGetShaderiv(vShader, GL_COMPILE_STATUS, &success);
     if (!success) {
         glGetShaderInfoLog(vShader, 1024, NULL, infoLog);
-        fprintf(stderr, "Error compiling shader type %d: '%s'\n", GL_FRAGMENT_SHADER, infoLog);
+        fprintf(stderr, "Error compiling shader type %d: '%s'\n", GL_VERTEX_SHADER, infoLog);
         return std::string(infoLog);
     }
 

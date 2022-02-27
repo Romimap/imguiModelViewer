@@ -264,6 +264,8 @@ public:
 
 	static const Palette& GetDarkPalette();
 	static const Palette& GetLightPalette();
+	static const Palette& GetCC29Palette();
+
 	static const Palette& GetRetroBluePalette();
 
 private:

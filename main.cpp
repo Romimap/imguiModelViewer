@@ -84,6 +84,7 @@ int main(int, char**)
     ImGuiIO& io = ImGui::GetIO(); (void)io;
     //io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
     //io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
+    io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 
     // Setup Dear ImGui style
     ImGui::StyleColorsDark();
@@ -108,13 +109,19 @@ int main(int, char**)
     //ImFont* font = io.Fonts->AddFontFromFileTTF("c:\\Windows\\Fonts\\ArialUni.ttf", 18.0f, NULL, io.Fonts->GetGlyphRangesJapanese());
     //IM_ASSERT(font != NULL);
 
+
     // Our state
     bool show_demo_window = true;
     bool show_another_window = false;
-    ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
+    ImVec4 clear_color = ImVec4(33.0 / 255.0, 33.0 / 255.0, 35.0 / 255.0, 1.00f);
+    ImVec4 muted_color = ImVec4(40.0 / 255.0, 40.0 / 255.0, 45.0 / 255.0, 1.00f);
+    ImVec4 primary_color = ImVec4(75.0 / 255.0, 128.0 / 255.0, 202.0 / 255.0, 1.00f);
+    ImVec4 active_color = ImVec4(180.0 / 255.0, 82.0 / 255.0, 82.0 / 255.0, 1.00f);
+
 
     ImVec2 size(800, 600);
-    glm::vec3 cameraPosition(2.5, 2, 1.5);
+    glm::vec3 cameraPosition(1.15, 1.5, 3);
+    float azimuth, elevation = 0;
     Renderer3D renderer3D(size, cameraPosition);
 
     glEnable(GL_DEPTH_TEST);
@@ -145,23 +152,48 @@ int main(int, char**)
 
 	// set your own identifiers
 	static const char* identifiers[] = {
-		"HWND", "HRESULT", "LPRESULT","D3D11_RENDER_TARGET_VIEW_DESC", "DXGI_SWAP_CHAIN_DESC","MSG","LRESULT","WPARAM", "LPARAM","UINT","LPVOID",
-		"ID3D11Device", "ID3D11DeviceContext", "ID3D11Buffer", "ID3D11Buffer", "ID3D10Blob", "ID3D11VertexShader", "ID3D11InputLayout", "ID3D11Buffer",
-		"ID3D10Blob", "ID3D11PixelShader", "ID3D11SamplerState", "ID3D11ShaderResourceView", "ID3D11RasterizerState", "ID3D11BlendState", "ID3D11DepthStencilState",
-		"IDXGISwapChain", "ID3D11RenderTargetView", "ID3D11Texture2D", "TextEditor" };
-	static const char* idecls[] = 
-	{
-		"typedef HWND_* HWND", "typedef long HRESULT", "typedef long* LPRESULT", "struct D3D11_RENDER_TARGET_VIEW_DESC", "struct DXGI_SWAP_CHAIN_DESC",
-		"typedef tagMSG MSG\n * Message structure","typedef LONG_PTR LRESULT","WPARAM", "LPARAM","UINT","LPVOID",
-		"ID3D11Device", "ID3D11DeviceContext", "ID3D11Buffer", "ID3D11Buffer", "ID3D10Blob", "ID3D11VertexShader", "ID3D11InputLayout", "ID3D11Buffer",
-		"ID3D10Blob", "ID3D11PixelShader", "ID3D11SamplerState", "ID3D11ShaderResourceView", "ID3D11RasterizerState", "ID3D11BlendState", "ID3D11DepthStencilState",
-		"IDXGISwapChain", "ID3D11RenderTargetView", "ID3D11Texture2D", "class TextEditor" };
+        "abs","acos","acosh","all","any","asin","asinh","atan","atanh","atomicAdd","atomicAnd","atomicCompSwap",
+        "atomicCounter","atomicCounterDecrement","atomicCounterIncrement","atomicExchange","atomicMax","atomicMin",
+        "atomicOr","atomicXor","barrier","bitCount","bitfieldExtract","bitfieldInsert","bitfieldReverse","ceil","clamp",
+        "cos","cosh","cross","degrees","determinant","dFdx","dFdxCoarse","dFdxFine","dFdy","dFdyCoarse","dFdyFine",
+        "distance","dot","EmitStreamVertex","EmitVertex","EndPrimitive","equal","exp","exp2","faceforward","findLSB",
+        "findMSB","floatBitsToInt","floatBitsToUint","floor","fma","fract","frexp","fwidth","fwidthCoarse","fwidthFine",
+        "greaterThan","greaterThanEqual","groupMemoryBarrier","imageAtomicAdd","imageAtomicAnd","imageAtomicCompSwap",
+        "imageAtomicExchange","imageAtomicMax","imageAtomicMin","imageAtomicOr","imageAtomicXor","imageLoad",
+        "imageSamples","imageSize","imageStore","imulExtended","intBitsToFloat","interpolateAtCentroid",
+        "interpolateAtOffset","interpolateAtSample","inverse","inversesqrt","isinf","isnan","ldexp","length","lessThan",
+        "lessThanEqual","log","log2","matrixCompMult","max","memoryBarrier","memoryBarrierAtomicCounter",
+        "memoryBarrierBuffer","memoryBarrierImage","memoryBarrierShared","min","mix","mod","modf","noise","noise1",
+        "noise2","noise3","noise4","normalize","not","notEqual","outerProduct","packDouble2x32","packHalf2x16",
+        "packSnorm2x16","packSnorm4x8","packUnorm","packUnorm2x16","packUnorm4x8","pow","radians","reflect","refract",
+        "removedTypes","round","roundEven","sign","sin","sinh","smoothstep","sqrt","step","tan","tanh","texelFetch",
+        "texelFetchOffset","texture","textureGather","textureGatherOffset","textureGatherOffsets","textureGrad",
+        "textureGradOffset","textureLod","textureLodOffset","textureOffset","textureProj","textureProjGrad",
+        "textureProjGradOffset","textureProjLod","textureProjLodOffset","textureProjOffset","textureQueryLevels",
+        "textureQueryLod","textureSamples","textureSize","transpose","trunc","uaddCarry","uintBitsToFloat",
+        "umulExtended","unpackDouble2x32","unpackHalf2x16","unpackSnorm2x16","unpackSnorm4x8","unpackUnorm",
+        "unpackUnorm2x16","unpackUnorm4x8","usubBorrow","in","uniform","out","layout"
+     };
+
 	for (int i = 0; i < sizeof(identifiers) / sizeof(identifiers[0]); ++i)
 	{
 		TextEditor::Identifier id;
-		id.mDeclaration = std::string(idecls[i]);
+		id.mDeclaration = std::string(identifiers[i]);
 		lang.mIdentifiers.insert(std::make_pair(std::string(identifiers[i]), id));
 	}
+
+    static const char* keywords[] = {
+        "vec2",
+        "vec3",
+        "vec4",
+        "mat4",
+        "sampler2D"
+     };
+
+    for (int i = 0; i < sizeof(keywords); ++i) {
+		lang.mKeywords.insert(std::string(keywords[i]));
+	}
+
 
     //TEXT EDITORS OBJECTS
     TextEditor editorFShader;
@@ -188,16 +220,33 @@ int main(int, char**)
     vfilestream << vShaderFile.rdbuf();
     editorVShader.SetText(vfilestream.str());
     vShaderFile.close();
+    
 
 	//editorVShader.SetPalette(TextEditor::GetLightPalette());
 
 	// error markers
 	TextEditor::ErrorMarkers vsmarkers;
 	editorVShader.SetErrorMarkers(vsmarkers);
-
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
+    ImGui::PushStyleColor(ImGuiCol_Border, clear_color);
+    ImGui::PushStyleColor(ImGuiCol_Separator, clear_color);
+    ImGui::PushStyleColor(ImGuiCol_ScrollbarBg, clear_color);
+    ImGui::PushStyleColor(ImGuiCol_ScrollbarGrab, muted_color);
+    ImGui::PushStyleColor(ImGuiCol_Button, muted_color);
+    ImGui::PushStyleColor(ImGuiCol_FrameBg, muted_color);
+    ImGui::PushStyleColor(ImGuiCol_Button, primary_color);
+    ImGui::PushStyleColor(ImGuiCol_SliderGrab, primary_color);
+    ImGui::PushStyleColor(ImGuiCol_ButtonActive, active_color);
+    ImGui::PushStyleColor(ImGuiCol_SliderGrabActive, active_color);
+    
+        
     // Main loop
     while (!glfwWindowShouldClose(window))
     {
+        ImGui::SetNextWindowPos(ImVec2(0.0f, 0.0f));
+        ImGui::SetNextWindowSize(ImGui::GetIO().DisplaySize);
+
+        
         // Poll and handle events (inputs, window resize, etc.)
         // You can read the io.WantCaptureMouse, io.WantCaptureKeyboard flags to tell if dear imgui wants to use your inputs.
         // - When io.WantCaptureMouse is true, do not dispatch mouse input data to your main application.
@@ -210,60 +259,60 @@ int main(int, char**)
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
 
-        // MODEL VIEWER
-        {
-            ImGui::Begin("Model Viewer");
-
-            ImGui::SliderFloat3("position", (float*)&cameraPosition, -3, 3);
-            renderer3D.Draw();
-            ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
-            
-            ImGui::End();
-        }
+        
 
         // FRAGMENT SHADER EDITOR
         {
             auto cpos = editorFShader.GetCursorPosition();
-            ImGui::Begin("Fragment Shader", nullptr, ImGuiWindowFlags_HorizontalScrollbar | ImGuiWindowFlags_MenuBar);
+            ImGui::Begin("Fragment Shader", nullptr,
+             ImGuiWindowFlags_NoTitleBar | 
+             ImGuiWindowFlags_NoDecoration | 
+             ImGuiWindowFlags_NoResize |
+             ImGuiWindowFlags_NoBackground);
             ImGui::SetWindowSize(ImVec2(800, 600), ImGuiCond_FirstUseEver);
+
 
             if (ImGui::Button("Compile")) {
                 std::string error = renderer3D.SetFShader(editorFShader.GetText());
+                fsmarkers.clear();
                 if (error.compare("") != 0) {
                     int a, line, c;
                     char message[1024];
                     sscanf(error.c_str(), "%d:%d(%d):%[^\n]", &a, &line, &c, &message);
                     std::string strmsg(message);
                     fsmarkers.insert(std::make_pair<int, std::string>((int)line, (std::string)strmsg));
-                    editorFShader.SetErrorMarkers(fsmarkers);
                     printf("AFTER\n");
                 } else {
-                    fsmarkers.clear();
-                    editorFShader.SetErrorMarkers(fsmarkers);
-
                     fShaderFile.open(fshaderfilepath);
                     fShaderFile << editorFShader.GetText();
                     fShaderFile.close();
                 }
+                editorFShader.SetErrorMarkers(fsmarkers);
             }
+
+            editorFShader.Render("TextEditor");
 
             //ImGui::Text("%6d/%-6d %6d lines  | %s | %s | %s | %s", cpos.mLine + 1, cpos.mColumn + 1, editorFShader.GetTotalLines(),
 			//editorFShader.IsOverwrite() ? "Ovr" : "Ins",
 			//editorFShader.CanUndo() ? "*" : " ",
 			//editorFShader.GetLanguageDefinition().mName.c_str(), fshaderfile);
 
-            editorFShader.Render("TextEditor");
 
             ImGui::End();
         }
 
-         // VERTEX SHADER EDITOR
+        // VERTEX SHADER EDITOR
         {
             auto cpos = editorVShader.GetCursorPosition();
-            ImGui::Begin("Vertex Shader", nullptr, ImGuiWindowFlags_HorizontalScrollbar | ImGuiWindowFlags_MenuBar);
+            ImGui::Begin("Vertex Shader", nullptr,
+             ImGuiWindowFlags_NoTitleBar | 
+             ImGuiWindowFlags_NoDecoration | 
+             ImGuiWindowFlags_NoResize |
+             ImGuiWindowFlags_NoBackground);
             ImGui::SetWindowSize(ImVec2(800, 600), ImGuiCond_FirstUseEver);
 
             if (ImGui::Button("Compile")) {
+                vsmarkers.clear();
                 std::string error = renderer3D.SetVShader(editorVShader.GetText());
                 if (error.compare("") != 0) {
                     int a, line, c;
@@ -271,16 +320,13 @@ int main(int, char**)
                     sscanf(error.c_str(), "%d:%d(%d):%[^\n]", &a, &line, &c, &message);
                     std::string strmsg(message);
                     vsmarkers.insert(std::make_pair<int, std::string>((int)line, (std::string)strmsg));
-                    editorVShader.SetErrorMarkers(vsmarkers);
                     printf("AFTER\n");
                 } else {
-                    vsmarkers.clear();
-                    editorVShader.SetErrorMarkers(vsmarkers);
-
                     vShaderFile.open(vshaderfilepath);
                     vShaderFile << editorVShader.GetText();
                     vShaderFile.close();
                 }
+                editorVShader.SetErrorMarkers(vsmarkers);
             }
 
             //ImGui::Text("%6d/%-6d %6d lines  | %s | %s | %s | %s", cpos.mLine + 1, cpos.mColumn + 1, editorFShader.GetTotalLines(),
@@ -293,11 +339,66 @@ int main(int, char**)
             ImGui::End();
         }
 
-        // // DEMO WINDOW
-        // {
-        //     ImGui::ShowDemoWindow(&show_demo_window);
-        // }
+        // MODEL VIEWER
+        {
+            ImGui::Begin("Model Viewer", nullptr, 
+             ImGuiWindowFlags_NoTitleBar | 
+             ImGuiWindowFlags_NoDecoration | 
+             ImGuiWindowFlags_NoResize |
+             ImGuiWindowFlags_NoBackground);
 
+            static bool validInput = false;
+            static float zoom = 5;
+            if (ImGui::IsWindowHovered() && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
+                validInput = true;
+            }
+
+            if (validInput) {
+                ImVec2 currentdelta = ImGui::GetMouseDragDelta(ImGuiMouseButton_Left);
+
+                float currentAzimuth = azimuth + currentdelta.x;
+                float currentElevation = std::min((float)140, std::max((float)-140, elevation + currentdelta.y));
+
+
+                if (ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {
+                    azimuth += currentdelta.x;
+                    elevation += currentdelta.y;
+                    currentdelta.x = 0;
+                    currentdelta.y = 0;
+                    validInput = false;
+                } 
+        
+                
+
+
+                glm::mat4 rotation(1);
+                rotation = glm::rotate(rotation, currentAzimuth * 0.01f, glm::vec3(0, -1, 0));
+                rotation = glm::rotate(rotation, currentElevation * 0.01f, glm::vec3(-1, 0, 0));
+                glm::vec4 newCamPosition(0, 0, zoom, 1);
+                newCamPosition = rotation * newCamPosition;
+                cameraPosition = newCamPosition;
+            }
+
+            if (ImGui::IsWindowHovered() && ImGui::GetIO().MouseWheel) {
+                zoom += (ImGui::GetIO().MouseWheel * 0.1f) * zoom;
+                zoom = std::min(100.0f, std::max(0.1f, zoom));
+
+
+                glm::mat4 rotation(1);
+                rotation = glm::rotate(rotation, azimuth * 0.01f, glm::vec3(0, -1, 0));
+                rotation = glm::rotate(rotation, elevation * 0.01f, glm::vec3(-1, 0, 0));
+                glm::vec4 newCamPosition(0, 0, zoom, 1);
+                newCamPosition = rotation * newCamPosition;
+                cameraPosition = newCamPosition;
+            }
+
+
+            renderer3D.Draw(ImVec2(ImGui::GetWindowSize().x - 16, ImGui::GetWindowSize().y - 16), clear_color);
+            ImGui::SetCursorPos(ImVec2(20, 20));
+            ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+            
+            ImGui::End();
+        }
 
         // Rendering
         ImGui::Render();
