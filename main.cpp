@@ -120,9 +120,18 @@ int main(int, char**)
 
 
     ImVec2 size(800, 600);
-    glm::vec3 cameraPosition(1.15, 1.5, 3);
-    float azimuth, elevation = 0;
-    Renderer3D renderer3D(size, cameraPosition);
+    float azimuth = 45;
+    float elevation = 45;
+    float zoom = 2;
+
+    glm::mat4 rotation(1);
+    rotation = glm::rotate(rotation, azimuth * 0.01f, glm::vec3(0, -1, 0));
+    rotation = glm::rotate(rotation, elevation * 0.01f, glm::vec3(-1, 0, 0));
+    glm::vec4 newCamPosition(0, 0, zoom, 1);
+    newCamPosition = rotation * newCamPosition;
+    glm::vec3 cameraPosition;
+    cameraPosition = newCamPosition;
+    Renderer3D renderer3D(size, cameraPosition, "./models/plane.obj");
 
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_CULL_FACE);
@@ -240,6 +249,10 @@ int main(int, char**)
     ImGui::PushStyleColor(ImGuiCol_SliderGrabActive, active_color);
     
         
+    //TIME
+    float time = 0;
+    float deltaTime = 0;
+
     // Main loop
     while (!glfwWindowShouldClose(window))
     {
@@ -348,23 +361,23 @@ int main(int, char**)
              ImGuiWindowFlags_NoBackground);
 
             static bool validInput = false;
-            static float zoom = 5;
             if (ImGui::IsWindowHovered() && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
                 validInput = true;
             }
 
+            float currentAzimuth = azimuth;
+            float currentElevation = elevation;
+
             if (validInput) {
                 ImVec2 currentdelta = ImGui::GetMouseDragDelta(ImGuiMouseButton_Left);
 
-                float currentAzimuth = azimuth + currentdelta.x;
-                float currentElevation = std::min((float)140, std::max((float)-140, elevation + currentdelta.y));
+                currentAzimuth = azimuth + currentdelta.x;
+                currentElevation = std::min((float)140, std::max((float)-140, elevation + currentdelta.y));
 
 
                 if (ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {
-                    azimuth += currentdelta.x;
-                    elevation += currentdelta.y;
-                    currentdelta.x = 0;
-                    currentdelta.y = 0;
+                    azimuth = currentAzimuth;
+                    elevation = currentElevation;
                     validInput = false;
                 } 
         
@@ -381,24 +394,28 @@ int main(int, char**)
 
             if (ImGui::IsWindowHovered() && ImGui::GetIO().MouseWheel) {
                 zoom += (ImGui::GetIO().MouseWheel * 0.1f) * zoom;
-                zoom = std::min(100.0f, std::max(0.1f, zoom));
+                zoom = std::min(100.0f, std::max(0.2f, zoom));
 
 
                 glm::mat4 rotation(1);
-                rotation = glm::rotate(rotation, azimuth * 0.01f, glm::vec3(0, -1, 0));
-                rotation = glm::rotate(rotation, elevation * 0.01f, glm::vec3(-1, 0, 0));
+                rotation = glm::rotate(rotation, currentAzimuth * 0.01f, glm::vec3(0, -1, 0));
+                rotation = glm::rotate(rotation, currentElevation * 0.01f, glm::vec3(-1, 0, 0));
                 glm::vec4 newCamPosition(0, 0, zoom, 1);
                 newCamPosition = rotation * newCamPosition;
                 cameraPosition = newCamPosition;
             }
 
 
-            renderer3D.Draw(ImVec2(ImGui::GetWindowSize().x - 16, ImGui::GetWindowSize().y - 16), clear_color);
+            renderer3D.Draw(ImVec2(ImGui::GetWindowSize().x - 16, ImGui::GetWindowSize().y - 16), clear_color, deltaTime, time);
             ImGui::SetCursorPos(ImVec2(20, 20));
             ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
             
             ImGui::End();
         }
+
+
+        deltaTime = 1.0f / (float)ImGui::GetIO().Framerate;
+        time += deltaTime;
 
         // Rendering
         ImGui::Render();
@@ -419,6 +436,7 @@ int main(int, char**)
 
     glfwDestroyWindow(window);
     glfwTerminate();
+
 
     return 0;
 }

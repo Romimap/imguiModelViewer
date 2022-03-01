@@ -55,7 +55,7 @@ private:
 public:
     Renderer3D(ImVec2 size, glm::vec3 &cameraPosition, char* model, char* vertexShader, char* fragmentShader);
     ~Renderer3D();
-    void Draw(ImVec2 size, ImVec4 clearColor);
+    void Draw(ImVec2 size, ImVec4 clearColor, float dt, float t);
     std::string SetFShader(const std::string &code);
     std::string SetVShader(const std::string &code);
 
@@ -112,7 +112,7 @@ Renderer3D::Renderer3D(ImVec2 size, glm::vec3 &cameraPosition, char* model = "./
         glGenTextures(1, &_albedo);
         glBindTexture(GL_TEXTURE_2D, _albedo);
         int w, h, nbC;
-        unsigned char *data = stbi_load("textures/Brick_albedo.png", &w, &h, &nbC, 0); 
+        unsigned char *data = stbi_load("textures/Brick_Color.png", &w, &h, &nbC, 0); 
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, w, h, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
         glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
         glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR); 
@@ -121,7 +121,7 @@ Renderer3D::Renderer3D(ImVec2 size, glm::vec3 &cameraPosition, char* model = "./
         glGenTextures(1, &_normal);
         glBindTexture(GL_TEXTURE_2D, _normal);
         int w, h, nbC;
-        unsigned char *data = stbi_load("textures/Brick_normal.png", &w, &h, &nbC, 0); 
+        unsigned char *data = stbi_load("textures/Brick_Normal.png", &w, &h, &nbC, 0); 
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, w, h, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
         glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
         glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR); 
@@ -130,8 +130,8 @@ Renderer3D::Renderer3D(ImVec2 size, glm::vec3 &cameraPosition, char* model = "./
         glGenTextures(1, &_roughness);
         glBindTexture(GL_TEXTURE_2D, _roughness);
         int w, h, nbC;
-        unsigned char *data = stbi_load("textures/Brick_roughness.png", &w, &h, &nbC, 0); 
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, w, h, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+        unsigned char *data = stbi_load("textures/Brick_Roughness.png", &w, &h, &nbC, 0); 
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_R, w, h, 0, GL_R, GL_UNSIGNED_BYTE, data);
         glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
         glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR); 
     }
@@ -157,7 +157,7 @@ Renderer3D::~Renderer3D() {
 }
 
 
-void Renderer3D::Draw(ImVec2 size, ImVec4 clearColor) {
+void Renderer3D::Draw(ImVec2 size, ImVec4 clearColor, float dt, float t) {
     glBindFramebuffer(GL_FRAMEBUFFER, _FBO); //Bind
     if (_size.x != size.x || _size.y != size.y) {
         glDeleteTextures(1, &_outputColor);
@@ -197,6 +197,8 @@ void Renderer3D::Draw(ImVec2 size, ImVec4 clearColor) {
     glUniformMatrix4fv(glGetUniformLocation(_shaderProgram, "viewMatrix"), 1, GL_FALSE, glm::value_ptr(_viewMatrix));
     glUniformMatrix4fv(glGetUniformLocation(_shaderProgram, "projectionMatrix"), 1, GL_FALSE, glm::value_ptr(_projectionMatrix));
     glUniform3f(glGetUniformLocation(_shaderProgram, "cameraPosition"), _cameraPosition->x, _cameraPosition->y, _cameraPosition->z);
+    glUniform1f(glGetUniformLocation(_shaderProgram, "DTIME"), dt);
+    glUniform1f(glGetUniformLocation(_shaderProgram, "TIME"), t);
 
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, _albedo);
