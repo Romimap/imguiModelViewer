@@ -10,6 +10,8 @@ uniform mat4 modelMatrix;
 uniform mat4 viewMatrix;
 uniform mat4 projectionMatrix;
 
+uniform float TIME;
+uniform float DTIME;
 
 out vec3 vPosition;
 out vec2 vUv;
@@ -26,8 +28,5 @@ void main () {
     vTangent = iTangent;
     vBitangent = iBitangent;
 }
-
-
-
 
 

@@ -65,7 +65,7 @@ int main(int, char**)
 #endif
 
     // Create window with graphics context
-    GLFWwindow* window = glfwCreateWindow(1280, 720, "Dear ImGui GLFW+OpenGL3 example", NULL, NULL);
+    GLFWwindow* window = glfwCreateWindow(1280, 720, "Dear ImGui Shader Editor", NULL, NULL);
     if (window == NULL)
         return 1;
     glfwMakeContextCurrent(window);
@@ -289,12 +289,13 @@ int main(int, char**)
                 std::string error = renderer3D.SetFShader(editorFShader.GetText());
                 fsmarkers.clear();
                 if (error.compare("") != 0) {
-                    int a, line, c;
+                    int a, line;
                     char message[1024];
-                    sscanf(error.c_str(), "%d:%d(%d):%[^\n]", &a, &line, &c, &message);
+                    sscanf(error.c_str(), "%d(%d):%[^\n]", &a, &line, &message);
                     std::string strmsg(message);
                     fsmarkers.insert(std::make_pair<int, std::string>((int)line, (std::string)strmsg));
                     printf("AFTER\n");
+                    std::ofstream TmpFile;
                 } else {
                     fShaderFile.open(fshaderfilepath);
                     fShaderFile << editorFShader.GetText();
@@ -330,7 +331,7 @@ int main(int, char**)
                 if (error.compare("") != 0) {
                     int a, line, c;
                     char message[1024];
-                    sscanf(error.c_str(), "%d:%d(%d):%[^\n]", &a, &line, &c, &message);
+                    sscanf(error.c_str(), "%d(%d):%[^\n]", &a, &line, &message);
                     std::string strmsg(message);
                     vsmarkers.insert(std::make_pair<int, std::string>((int)line, (std::string)strmsg));
                     printf("AFTER\n");

@@ -108,44 +108,6 @@ Renderer3D::Renderer3D(ImVec2 size, glm::vec3 &cameraPosition, char* model = "./
     _modelMatrix = glm::mat4x4(1.0f);
     _viewMatrix = glm::lookAt(*_cameraPosition, glm::vec3(0, 0, 0), glm::vec3(0, 1, 0));
 
-    {
-        glGenTextures(1, &_albedo);
-        glBindTexture(GL_TEXTURE_2D, _albedo);
-        int w, h, nbC;
-        unsigned char *data = stbi_load("textures/Brick_Color.png", &w, &h, &nbC, 0); 
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, w, h, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
-        glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR); 
-    }
-    {
-        glGenTextures(1, &_normal);
-        glBindTexture(GL_TEXTURE_2D, _normal);
-        int w, h, nbC;
-        unsigned char *data = stbi_load("textures/Brick_Normal.png", &w, &h, &nbC, 0); 
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, w, h, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
-        glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR); 
-    }
-    {
-        glGenTextures(1, &_roughness);
-        glBindTexture(GL_TEXTURE_2D, _roughness);
-        int w, h, nbC;
-        unsigned char *data = stbi_load("textures/Brick_Roughness.png", &w, &h, &nbC, 0); 
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_R, w, h, 0, GL_R, GL_UNSIGNED_BYTE, data);
-        glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR); 
-    }
-    {
-        glGenTextures(1, &_envMap);
-        glBindTexture(GL_TEXTURE_2D, _envMap);
-        int w, h, nbC;
-        unsigned char *data = stbi_load("textures/hdri_warehouse.png", &w, &h, &nbC, 0); 
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, w, h, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
-        glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR); 
-    }
-
-
     //Back to the default frame buffer
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
@@ -199,20 +161,6 @@ void Renderer3D::Draw(ImVec2 size, ImVec4 clearColor, float dt, float t) {
     glUniform3f(glGetUniformLocation(_shaderProgram, "cameraPosition"), _cameraPosition->x, _cameraPosition->y, _cameraPosition->z);
     glUniform1f(glGetUniformLocation(_shaderProgram, "DTIME"), dt);
     glUniform1f(glGetUniformLocation(_shaderProgram, "TIME"), t);
-
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, _albedo);
-    glUniform1i(glGetUniformLocation(_shaderProgram, "albedo"), 0);
-    glActiveTexture(GL_TEXTURE1);
-    glBindTexture(GL_TEXTURE_2D, _normal);
-    glUniform1i(glGetUniformLocation(_shaderProgram, "normal"), 1);
-    glActiveTexture(GL_TEXTURE2);
-    glBindTexture(GL_TEXTURE_2D, _roughness);
-    glUniform1i(glGetUniformLocation(_shaderProgram, "roughness"), 2);
-    glActiveTexture(GL_TEXTURE5);
-    glBindTexture(GL_TEXTURE_2D, _envMap);
-    glUniform1i(glGetUniformLocation(_shaderProgram, "hdri"), 5);
-
 
     glDrawArrays(GL_TRIANGLES, 0, _vertices.size());
 

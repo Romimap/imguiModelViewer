@@ -35,8 +35,8 @@ TextEditor::TextEditor()
 	, mScrollToTop(false)
 	, mTextChanged(false)
 	, mColorizerEnabled(true)
-	, mTextStart(0.0f)
-	, mLeftMargin(0)
+	, mTextStart(20.0f)
+	, mLeftMargin(4)
 	, mCursorPositionChanged(false)
 	, mColorRangeMin(0)
 	, mColorRangeMax(0)
@@ -2050,7 +2050,7 @@ const TextEditor::Palette & TextEditor::GetCC29Palette() {
 			0x80a06020, // Selection
 			0x800020ff, // ErrorMarker
 			0x00f08000, // Breakpoint
-			0xff232121, // Line number
+			0xff454545, // Line number
 			0x00705d5b, // Current line fill
 			0x00705d5b, // Current line fill (inactive)
 			0x10705d5b, // Current line edge
