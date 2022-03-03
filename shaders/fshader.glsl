@@ -1,4 +1,4 @@
-#version 330
+#version 460
 
 in vec3 vPosition;
 in vec2 vUv;
@@ -24,8 +24,12 @@ const vec3 ambientColor = vec3(0.1, 0.15, 0.25);
 
 const float pi = 3.141592;
 
+float getLod() {
+	return textureQueryLod(albedo, vUv).x * 0.9;
+}
+
 vec3 getLightDir() {
-	return normalize(vec3(cos(TIME), 0.8728, sin(TIME)));
+	return normalize(vec3(cos(TIME), 0.5, sin(TIME)));
 }
 
 float shadowFactor() {
@@ -33,7 +37,7 @@ float shadowFactor() {
 }
 
 vec3 getSpecular (vec3 normal) {
-	float m = (1 - texture(roughness, vUv).r) * 55;
+	float m = (1 - textureLod(roughness, vUv, getLod()).r) * 10;
 	vec3 viewDir = -normalize(vPosition - cameraPosition);
 	vec3 h = (viewDir + getLightDir()) / 2.0;
 	//if (dot(h, vNormal) < 0.1) return vec3(0);
@@ -53,7 +57,7 @@ vec3 getDiffuse (vec3 normal) {
 }
 
 vec3 getAlbedo () {
-	return texture(albedo, vUv).rgb;
+	return textureLod(albedo, vUv, getLod()).rgb;
 }
 
 
@@ -62,7 +66,7 @@ float angle (vec3 a, vec3 b) {
 }
 
 vec3 computeNormal(float p) {
-	vec3 tNormal = texture(normal, vUv).xyz;
+	vec3 tNormal = textureLod(normal, vUv, getLod()).xyz;
 	tNormal = tNormal * 2.0 - vec3(1.0);
 	return normalize(vTangent * p * tNormal.x + vBitangent * p * -tNormal.y + vNormal * tNormal.z);
 }
@@ -72,6 +76,60 @@ void main () {
 	FragColor = vec4((getDiffuse(nrm) + ambientColor) * getAlbedo() + getSpecular(nrm), 1.0);
 	//FragColor = vec4(getSpecular(normal, 100), 1);
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
