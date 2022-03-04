@@ -131,7 +131,9 @@ int main(int, char**)
     newCamPosition = rotation * newCamPosition;
     glm::vec3 cameraPosition;
     cameraPosition = newCamPosition;
-    Renderer3D renderer3D(size, cameraPosition, "./models/plane.obj");
+    const char* fshaderfilepath = "./shaders/tilingfshader.glsl";
+    const char* vshaderfilepath = "./shaders/vshader.glsl";
+    Renderer3D renderer3D(size, cameraPosition, "./models/plane.obj", fshaderfilepath, vshaderfilepath);
 
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_CULL_FACE);
@@ -191,7 +193,7 @@ int main(int, char**)
 		lang.mIdentifiers.insert(std::make_pair(std::string(identifiers[i]), id));
 	}
 
-    static const char* keywords[] = {
+    const char* keywords[] = {
         "vec2",
         "vec3",
         "vec4",
@@ -199,7 +201,7 @@ int main(int, char**)
         "sampler2D"
      };
 
-    for (int i = 0; i < sizeof(keywords); ++i) {
+    for (int i = 0; i < 5; ++i) {
 		lang.mKeywords.insert(std::string(keywords[i]));
 	}
 
@@ -207,7 +209,6 @@ int main(int, char**)
     //TEXT EDITORS OBJECTS
     TextEditor editorFShader;
 	editorFShader.SetLanguageDefinition(lang);
-    static const char* fshaderfilepath = "./shaders/fshader.glsl";
     std::fstream fShaderFile(fshaderfilepath);
     std::stringstream ffilestream;
     ffilestream << fShaderFile.rdbuf();
@@ -223,7 +224,6 @@ int main(int, char**)
 
     TextEditor editorVShader;
 	editorVShader.SetLanguageDefinition(lang);
-    static const char* vshaderfilepath = "./shaders/vshader.glsl";
     std::fstream vShaderFile(vshaderfilepath);
     std::stringstream vfilestream;
     vfilestream << vShaderFile.rdbuf();

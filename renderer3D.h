@@ -53,19 +53,19 @@ private:
 
 
 public:
-    Renderer3D(ImVec2 size, glm::vec3 &cameraPosition, char* model, char* vertexShader, char* fragmentShader);
+    Renderer3D(ImVec2 size, glm::vec3 &cameraPosition, const char* model, const char* vertexShader, const char* fragmentShader);
     ~Renderer3D();
     void Draw(ImVec2 size, ImVec4 clearColor, float dt, float t);
     std::string SetFShader(const std::string &code);
     std::string SetVShader(const std::string &code);
 
 private:
-    void LoadMesh(char* model);
-    void MakeShaderProgram(char* fragmentShader, char* vertexShader);
+    void LoadMesh(const char* model);
+    void MakeShaderProgram(const char* fragmentShader, const char* vertexShader);
 };
 
 
-Renderer3D::Renderer3D(ImVec2 size, glm::vec3 &cameraPosition, char* model = "./models/cube.obj", char* fragmentShader = "./shaders/fshader.glsl", char* vertexShader = "./shaders/vshader.glsl") : _size(size), _cameraPosition(&cameraPosition) {
+Renderer3D::Renderer3D(ImVec2 size, glm::vec3 &cameraPosition, const char* model = "./models/cube.obj", const char* fragmentShader = "./shaders/fshader.glsl", const char* vertexShader = "./shaders/vshader.glsl") : _size(size), _cameraPosition(&cameraPosition) {
     MakeShaderProgram(fragmentShader, vertexShader);
 
     LoadMesh(model);
@@ -262,7 +262,7 @@ std::vector<std::string> splitstr (std::string str, std::string del) {
     return split;
 }
 
-void Renderer3D::LoadMesh(char* model) {
+void Renderer3D::LoadMesh(const char* model) {
     std::ifstream file(model);
     assert (file.is_open());
 
@@ -423,7 +423,7 @@ std::string Renderer3D::SetVShader(const std::string &code) {
 }
 
 
-void Renderer3D::MakeShaderProgram(char* fragmentShader, char* vertexShader) {
+void Renderer3D::MakeShaderProgram(const char* fragmentShader, const char* vertexShader) {
     //SHADER
     _shaderProgram = glCreateProgram();
     GLint success;
