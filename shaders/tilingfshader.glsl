@@ -86,7 +86,10 @@ vec3 barycentricCoord(vec2 tcoord) {
 	float beta = a_abp / a_abc;
 	float gamma = a_pbc / a_abc;
 
-	
+	 //Swap coords so alpha, beta, gamma follow each other in the same order
+	if (tcoord.x + tcoord.y > 1) {
+		return vec3(beta, alpha, gamma);
+	}
 
 	return vec3(alpha, beta, gamma);
 }
@@ -107,12 +110,13 @@ void main () {
 	//color = vec3(uv.x - 100, uv.y, 1);
 	//color = texture(albedo,tcoord).rgb;
 	//if (tcoord.x + tcoord.y < 1)
-		color = barycentricCoord(tcoord);
+	color = barycentricCoord(tcoord);
 
 	//color = vec3(tcoord, 0);
 	
 	FragColor = vec4(color.rgb, 1.0);
 }
+
 
 
 
