@@ -17,6 +17,7 @@
 #include "TextEditor.h"
 #include <iostream>
 #include <sstream>
+#include "ImGuizmo/ImGuizmo.h"
 
 
 // [Win32] Our example includes a copy of glfw3.lib pre-compiled with VS2010 to maximize ease of testing and compatibility with old VS compilers.
@@ -131,9 +132,9 @@ int main(int, char**)
     newCamPosition = rotation * newCamPosition;
     glm::vec3 cameraPosition;
     cameraPosition = newCamPosition;
-    const char* fshaderfilepath = "./shaders/tilingfshader.glsl";
+    const char* fshaderfilepath = "./shaders/fshader.glsl";
     const char* vshaderfilepath = "./shaders/vshader.glsl";
-    Renderer3D renderer3D(size, cameraPosition, "./models/plane.obj", fshaderfilepath, vshaderfilepath);
+    Renderer3D renderer3D(size, cameraPosition, "./models/sphube.obj", fshaderfilepath, vshaderfilepath);
 
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_CULL_FACE);
@@ -271,6 +272,8 @@ int main(int, char**)
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
+        ImGuizmo::BeginFrame();
+        ImGuizmo::Enable(true);
 
         
 
@@ -291,7 +294,7 @@ int main(int, char**)
                 if (error.compare("") != 0) {
                     int a, line, c;
                     char message[1024];
-                    sscanf(error.c_str(), "%d:%d(%d):%[^\n]", &a, &line, &c, &message);
+                    sscanf(error.c_str(), "%d(%d) : %[^\n]", &a, &line, &message);
                     std::string strmsg(message);
                     fsmarkers.insert(std::make_pair<int, std::string>((int)line, (std::string)strmsg));
                     printf("AFTER\n");
@@ -330,7 +333,7 @@ int main(int, char**)
                 if (error.compare("") != 0) {
                     int a, line, c;
                     char message[1024];
-                    sscanf(error.c_str(), "%d:%d(%d):%[^\n]", &a, &line, &c, &message);
+                    sscanf(error.c_str(), "%d(%d) : %[^\n]", &a, &line, &message);
                     std::string strmsg(message);
                     vsmarkers.insert(std::make_pair<int, std::string>((int)line, (std::string)strmsg));
                     printf("AFTER\n");
@@ -410,6 +413,9 @@ int main(int, char**)
             ImGui::SetCursorPos(ImVec2(20, 20));
             ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
             
+            const glm::mat4 matrix(1);
+            ImGuizmo::DrawCubes((float*)&renderer3D.getViewMatrix()[0][0], (float*)& renderer3D.getProjectionMatrix()[0][0], (float*)& matrix[0][0], 1);
+
             ImGui::End();
         }
 

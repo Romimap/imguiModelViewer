@@ -41,6 +41,8 @@ private:
     GLuint _albedo = 0;
     GLuint _normal = 0;
     GLuint _roughness = 0;
+    GLuint _bmap = 0;
+    GLuint _mmap = 0;
 
     glm::mat4x4 _projectionMatrix;
     glm::mat4x4 _viewMatrix;
@@ -59,6 +61,10 @@ public:
     std::string SetFShader(const std::string &code);
     std::string SetVShader(const std::string &code);
 
+    glm::mat4 getProjectionMatrix() {return _projectionMatrix;}
+    glm::mat4 getViewMatrix() {return _viewMatrix;}
+    glm::mat4 getModelMatrix() {return _modelMatrix;}
+
 private:
     void LoadMesh(const char* model);
     void MakeShaderProgram(const char* fragmentShader, const char* vertexShader);
@@ -69,22 +75,6 @@ Renderer3D::Renderer3D(ImVec2 size, glm::vec3 &cameraPosition, const char* model
     MakeShaderProgram(fragmentShader, vertexShader);
 
     LoadMesh(model);
-    //std::vector<VertexData> positions;
-    //VertexData a, b, c;
-    //a.position = glm::vec3(-1, -1, 0);
-    //a.color = glm::vec3(1, 0, 0);
-    //b.position = glm::vec3(0, 1, 0);
-    //b.color = glm::vec3(0, 1, 0);
-    //c.position = glm::vec3(1, -1, 0);
-    //c.color = glm::vec3(0, 0, 1);
-    //
-    //positions.push_back(a);
-    //positions.push_back(b);
-    //positions.push_back(c);
-    //glGenBuffers(1, &_VBO);
-    //glBindBuffer(GL_ARRAY_BUFFER, _VBO);
-    //glBufferData(GL_ARRAY_BUFFER, positions.size() * sizeof(VertexData), positions.data(), GL_STATIC_DRAW);
-    
     
     //We create a new buffer
     glGenFramebuffers(1, &_FBO);
@@ -130,6 +120,54 @@ Renderer3D::Renderer3D(ImVec2 size, glm::vec3 &cameraPosition, const char* model
         unsigned char *data = stbi_load("textures/Moss_Normal.png", &w, &h, &nbC, 0); 
         glTexStorage2D(GL_TEXTURE_2D, mip_levels, GL_RGB8, w, h);
         glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, w, h, GL_RGB, GL_UNSIGNED_BYTE, data);
+        glGenerateMipmap(GL_TEXTURE_2D);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+        glTexParameterf(GL_TEXTURE_2D, GL_MAX_TEXTURE_MAX_ANISOTROPY, 16.0f);
+
+        float s = 100;
+        float *dataB = (float*)calloc(w * h * nbC, sizeof(float));
+        float *dataM = (float*)calloc(w * h * nbC, sizeof(float));
+        for (int x = 0; x < w; x++) {
+            for (int y = 0; y < h; y++) {
+                int pixelId = nbC * x + nbC * w * y;
+                std::vector<float> pix(3);
+                pix[0] = ((double)data[pixelId + 0] / 255.0) * 2.0 - 1.0; //Normal.x from [0;255] to [-1.0;1.0]
+                pix[1] = ((double)data[pixelId + 1] / 255.0) * 2.0 - 1.0; //Normal.y from [0;255] to [-1.0;1.0]
+                pix[2] = ((double)data[pixelId + 2] / 255.0) * 2.0 - 1.0; //Normal.z from [0;255] to [-1.0;1.0]
+
+                std::vector<float> bbar(2); //NOTE: could be 0;2 / 1 if y is top
+                bbar[0] = pix[0] / pix[2];
+                bbar[1] = pix[1] / pix[2];
+
+                dataB[pixelId + 0] = bbar[0] * 0.5 + 0.5;
+                dataB[pixelId + 1] = bbar[1] * 0.5 + 0.5;
+                dataB[pixelId + 2] = pix[2]  * 0.5 + 0.5;
+
+                dataM[pixelId + 0] = bbar[0] * bbar[0] + (1.0/s);
+                dataM[pixelId + 1] = bbar[1] * bbar[1] + (1.0/s);
+                dataM[pixelId + 2] = bbar[0] * bbar[1];
+            }
+        }
+
+
+        glGenTextures(1, &_bmap);
+        glBindTexture(GL_TEXTURE_2D, _bmap);
+        glTexStorage2D(GL_TEXTURE_2D, mip_levels, GL_RGB32F, w, h);
+        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, w, h, GL_RGB, GL_FLOAT, dataB);
+        glGenerateMipmap(GL_TEXTURE_2D);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+        glTexParameterf(GL_TEXTURE_2D, GL_MAX_TEXTURE_MAX_ANISOTROPY, 16.0f);
+
+        glGenTextures(1, &_mmap);
+        glBindTexture(GL_TEXTURE_2D, _mmap);
+        glTexStorage2D(GL_TEXTURE_2D, mip_levels, GL_RGB32F, w, h);
+        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, w, h, GL_RGB, GL_FLOAT, dataM);
         glGenerateMipmap(GL_TEXTURE_2D);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
@@ -230,6 +268,12 @@ void Renderer3D::Draw(ImVec2 size, ImVec4 clearColor, float dt, float t) {
     glActiveTexture(GL_TEXTURE2);
     glBindTexture(GL_TEXTURE_2D, _roughness);
     glUniform1i(glGetUniformLocation(_shaderProgram, "roughness"), 2);
+    glActiveTexture(GL_TEXTURE3);
+    glBindTexture(GL_TEXTURE_2D, _bmap);
+    glUniform1i(glGetUniformLocation(_shaderProgram, "bmap"), 3);
+    glActiveTexture(GL_TEXTURE4);
+    glBindTexture(GL_TEXTURE_2D, _mmap);
+    glUniform1i(glGetUniformLocation(_shaderProgram, "mmap"), 4);
     glActiveTexture(GL_TEXTURE5);
     glBindTexture(GL_TEXTURE_2D, _envMap);
     glUniform1i(glGetUniformLocation(_shaderProgram, "hdri"), 5);
