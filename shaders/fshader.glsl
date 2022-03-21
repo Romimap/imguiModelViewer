@@ -40,7 +40,7 @@ vec3 viewDirection () {
 
 //Returns the light direction (surface to light)
 vec3 lightDirection () {
-	return normalize(vec3(2, 5, 0));
+	return normalize(vec3(5, 2, 0));
 }
 
 
@@ -54,7 +54,7 @@ vec3 h() {
 // /!\ IMPORTANT NOTE : 
 //     based on the implementation, the return value might need to be tweaked, especially the tangent & bitangent directions.
 vec3 GlobalToNormalSpace(vec3 v) {
-	return vec3(-dot(v, vTangent), dot(v, vNormal), dot(v, vBitangent));
+	return vec3(dot(v, vTangent), dot(v, vNormal), dot(v, -vBitangent));
 }
 
 
@@ -65,11 +65,6 @@ vec3 NormalToGlobalSpace(vec3 v) {
 	return v.x * -vTangent + v.y * vNormal + v.z * -vBitangent;
 }
 
-
-//Returns the Sigma matrix from the paper. a = d so we can store it in a vec3.
-vec3 getSigma (vec3 b, vec3 m) {
-	return vec3(m.x - b.x * b.x, m.y - b.y * b.y, m.z - b.x * b.y);
-}
 
 vec3 getMicroNormal (sampler2D bm, int lod) {
 	vec3 b;
@@ -104,11 +99,11 @@ float getSpecularIntensity (sampler2D bm, sampler2D mm, int lod) {
 	}
 	
 
-	vec3 hn = GlobalToNormalSpace(h()); //Put H in normal space
+	vec3 hn = GlobalToNormalSpace(normalize(h())); //TODO : Put H in normal space
 	hn /= hn.y;
-	vec2 hb = hn.xz + b.xy; //Get H bar, h projected into a plane defined by the mesh normal
-
-	vec3 sigma = getSigma(b, m);
+	vec2 hb = hn.xz - b.xy;
+	
+	vec3 sigma = m - vec3(b.x * b.x, b.y * b.y, b.x * b.y);
 	float det = sigma.x * sigma.y - sigma.z * sigma.z;
 	
 	float e = (hb.x*hb.x*sigma.y + hb.y*hb.y*sigma.x - 2.0*hb.x*hb.y*sigma.z);
@@ -155,34 +150,18 @@ vec3 colorManagement (vec3 color, float exposure) {
 void main () {
 	int lod = int(mod(TIME, 6));
 	lod = -1; //AUTO LOD
+	//lod = 5;
 
 	vec3 color;
-	color = getDiffuse(bmap, albedo, lod) + getSpecular(bmap, mmap, lod, 0.5);
+	//color = vec3(getSpecularIntensity(bmap, mmap, lod));
 	//color = getSpecular(bmap, mmap, lod, 1);
+	
+	color = getSpecular(bmap, mmap, lod, 1) + getDiffuse(bmap, albedo, lod);
 	float exposure = 0.5;
 	color = colorManagement(color, exposure);
+
 	
 	FragColor = vec4(color, 1.0);
 }
-
-
-
-
-
-
-
-
-
-
-
-}
-
-
-
-
-
-
-
-
 
 
