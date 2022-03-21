@@ -134,7 +134,7 @@ int main(int, char**)
     cameraPosition = newCamPosition;
     const char* fshaderfilepath = "./shaders/fshader.glsl";
     const char* vshaderfilepath = "./shaders/vshader.glsl";
-    Renderer3D renderer3D(size, cameraPosition, "./models/sphube.obj", fshaderfilepath, vshaderfilepath);
+    Renderer3D renderer3D(size, cameraPosition, "./models/bigGrid.obj", fshaderfilepath, vshaderfilepath);
 
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_CULL_FACE);
@@ -412,10 +412,17 @@ int main(int, char**)
             renderer3D.Draw(ImVec2(ImGui::GetWindowSize().x - 16, ImGui::GetWindowSize().y - 16), clear_color, deltaTime, time);
             ImGui::SetCursorPos(ImVec2(20, 20));
             ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
-            
-            const glm::mat4 matrix(1);
-            ImGuizmo::DrawCubes((float*)&renderer3D.getViewMatrix()[0][0], (float*)& renderer3D.getProjectionMatrix()[0][0], (float*)& matrix[0][0], 1);
 
+            ImGuizmo::SetDrawlist();
+			ImGuizmo::SetRect(ImGui::GetWindowPos().x + ImGui::GetWindowSize().x - 150, ImGui::GetWindowPos().y + 50, 100, 100 * ImGui::GetWindowSize().y / ImGui::GetWindowSize().x);
+            ImGuizmo::SetGizmoSizeClipSpace(1);
+            ImGuizmo::SetOrthographic(true);
+
+            const glm::mat4 matrix(1);
+            ImGuizmo::Manipulate((float*)&renderer3D.getViewMatrix()[0][0], (float*)& renderer3D.getProjectionMatrix()[0][0], ImGuizmo::OPERATION::TRANSLATE, ImGuizmo::MODE::WORLD, (float*)& matrix[0][0]);
+            //ImGuizmo::DrawCubes((float*)&renderer3D.getViewMatrix()[0][0], (float*)& renderer3D.getProjectionMatrix()[0][0], (float*)& matrix[0][0], 1);
+   
+           
             ImGui::End();
         }
 

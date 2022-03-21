@@ -52,6 +52,8 @@ private:
 
     glm::vec3 *_cameraPosition;
 
+    float s = 5;
+
 
 
 public:
@@ -94,40 +96,40 @@ Renderer3D::Renderer3D(ImVec2 size, glm::vec3 &cameraPosition, const char* model
     if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
 	    printf("ERROR::FRAMEBUFFER:: Framebuffer is not complete!\n");
     
-    _projectionMatrix = glm::perspective<float>(glm::radians(55.0), _size.x / _size.y, 0.1f, 100.0f);
+    _projectionMatrix = glm::perspective<float>(glm::radians(55.0), _size.x / _size.y, 0.1f, 1000.0f);
     _modelMatrix = glm::mat4x4(1.0f);
     _viewMatrix = glm::lookAt(*_cameraPosition, glm::vec3(0, 0, 0), glm::vec3(0, 1, 0));
 
-    int mip_levels = 8;
+    int mip_levels = 6;
+    float max_aniso = 1;
     {
         glGenTextures(1, &_albedo);
         glBindTexture(GL_TEXTURE_2D, _albedo);
         int w, h, nbC;
-        unsigned char *data = stbi_load("textures/Moss_Color.png", &w, &h, &nbC, 0);
+        unsigned char *data = stbi_load("textures/Gravel_Color.png", &w, &h, &nbC, 0);
         glTexStorage2D(GL_TEXTURE_2D, mip_levels, GL_RGB8, w, h);
         glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, w, h, GL_RGB, GL_UNSIGNED_BYTE, data);
         glGenerateMipmap(GL_TEXTURE_2D);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR_MIPMAP_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-        glTexParameterf(GL_TEXTURE_2D, GL_MAX_TEXTURE_MAX_ANISOTROPY, 16.0f);
+        glTexParameterf(GL_TEXTURE_2D, GL_MAX_TEXTURE_MAX_ANISOTROPY, max_aniso);
     }
     {
         glGenTextures(1, &_normal);
         glBindTexture(GL_TEXTURE_2D, _normal);
         int w, h, nbC;
-        unsigned char *data = stbi_load("textures/Moss_Normal.png", &w, &h, &nbC, 0); 
+        unsigned char *data = stbi_load("textures/Gravel_NormalGL.png", &w, &h, &nbC, 0); 
         glTexStorage2D(GL_TEXTURE_2D, mip_levels, GL_RGB8, w, h);
         glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, w, h, GL_RGB, GL_UNSIGNED_BYTE, data);
         glGenerateMipmap(GL_TEXTURE_2D);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR_MIPMAP_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-        glTexParameterf(GL_TEXTURE_2D, GL_MAX_TEXTURE_MAX_ANISOTROPY, 16.0f);
+        glTexParameterf(GL_TEXTURE_2D, GL_MAX_TEXTURE_MAX_ANISOTROPY, max_aniso);
 
-        float s = 100;
         float *dataB = (float*)calloc(w * h * nbC, sizeof(float));
         float *dataM = (float*)calloc(w * h * nbC, sizeof(float));
         for (int x = 0; x < w; x++) {
@@ -142,9 +144,9 @@ Renderer3D::Renderer3D(ImVec2 size, glm::vec3 &cameraPosition, const char* model
                 bbar[0] = pix[0] / pix[2];
                 bbar[1] = pix[1] / pix[2];
 
-                dataB[pixelId + 0] = bbar[0] * 0.5 + 0.5;
-                dataB[pixelId + 1] = bbar[1] * 0.5 + 0.5;
-                dataB[pixelId + 2] = pix[2]  * 0.5 + 0.5;
+                dataB[pixelId + 0] = bbar[0];
+                dataB[pixelId + 1] = bbar[1];
+                dataB[pixelId + 2] = pix[2];
 
                 dataM[pixelId + 0] = bbar[0] * bbar[0] + (1.0/s);
                 dataM[pixelId + 1] = bbar[1] * bbar[1] + (1.0/s);
@@ -160,9 +162,9 @@ Renderer3D::Renderer3D(ImVec2 size, glm::vec3 &cameraPosition, const char* model
         glGenerateMipmap(GL_TEXTURE_2D);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR_MIPMAP_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-        glTexParameterf(GL_TEXTURE_2D, GL_MAX_TEXTURE_MAX_ANISOTROPY, 16.0f);
+        glTexParameterf(GL_TEXTURE_2D, GL_MAX_TEXTURE_MAX_ANISOTROPY, max_aniso);
 
         glGenTextures(1, &_mmap);
         glBindTexture(GL_TEXTURE_2D, _mmap);
@@ -171,23 +173,23 @@ Renderer3D::Renderer3D(ImVec2 size, glm::vec3 &cameraPosition, const char* model
         glGenerateMipmap(GL_TEXTURE_2D);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR_MIPMAP_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-        glTexParameterf(GL_TEXTURE_2D, GL_MAX_TEXTURE_MAX_ANISOTROPY, 16.0f);
+        glTexParameterf(GL_TEXTURE_2D, GL_MAX_TEXTURE_MAX_ANISOTROPY, max_aniso);
     }
     {
         glGenTextures(1, &_roughness);
         glBindTexture(GL_TEXTURE_2D, _roughness);
         int w, h, nbC;
-        unsigned char *data = stbi_load("textures/Moss_Roughness.png", &w, &h, &nbC, 0); 
+        unsigned char *data = stbi_load("textures/Gravel_Roughness.png", &w, &h, &nbC, 0); 
         glTexStorage2D(GL_TEXTURE_2D, mip_levels, GL_R8, w, h);
         glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, w, h, GL_R, GL_UNSIGNED_BYTE, data);
         glGenerateMipmap(GL_TEXTURE_2D);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR_MIPMAP_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-        glTexParameterf(GL_TEXTURE_2D, GL_MAX_TEXTURE_MAX_ANISOTROPY, 16.0f);
+        glTexParameterf(GL_TEXTURE_2D, GL_MAX_TEXTURE_MAX_ANISOTROPY, max_aniso);
     }
     {
         glGenTextures(1, &_envMap);
@@ -201,7 +203,7 @@ Renderer3D::Renderer3D(ImVec2 size, glm::vec3 &cameraPosition, const char* model
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-        glTexParameterf(GL_TEXTURE_2D, GL_MAX_TEXTURE_MAX_ANISOTROPY, 16.0f);
+        glTexParameterf(GL_TEXTURE_2D, GL_MAX_TEXTURE_MAX_ANISOTROPY, max_aniso);
     }
 
 
@@ -228,7 +230,7 @@ void Renderer3D::Draw(ImVec2 size, ImVec4 clearColor, float dt, float t) {
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);  
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, _outputColor, 0);
-        _projectionMatrix = glm::perspective<float>(glm::radians(55.0), _size.x / _size.y, 0.1f, 100.0f);        
+        _projectionMatrix = glm::perspective<float>(glm::radians(55.0), _size.x / _size.y, 0.1f, 1000.0f);        
     }
     _viewMatrix = glm::lookAt(*_cameraPosition, glm::vec3(0, 0, 0), glm::vec3(0, 1, 0));
 
@@ -313,6 +315,13 @@ void Renderer3D::LoadMesh(const char* model) {
     std::vector<glm::vec3> positions;
     std::vector<glm::vec2> uvs;
     std::vector<glm::vec3> normals;
+    std::vector<glm::vec3>* tangents[4096];
+    std::vector<glm::vec3>* bitangents[4096];
+
+    for (int i = 0; i < 4096; i++) {
+        tangents[i] = new std::vector<glm::vec3>();
+        bitangents[i] = new std::vector<glm::vec3>();
+    }
 
     std::map<std::string, int> vertexIds;
 
@@ -374,6 +383,7 @@ void Renderer3D::LoadMesh(const char* model) {
             bitangent.x = f * (-deltaUV2.x * edge1.x + deltaUV1.x * edge2.x);
             bitangent.z = f * (-deltaUV2.x * edge1.z + deltaUV1.x * edge2.z);
 
+
             v1->tangeant = tangent;
             v2->tangeant = tangent;
             v3->tangeant = tangent;
@@ -387,6 +397,11 @@ void Renderer3D::LoadMesh(const char* model) {
         glBufferData(GL_ARRAY_BUFFER, _vertices.size() * sizeof(VertexData), _vertices.data(), GL_STATIC_DRAW);
     }
 
+    //Free the memory
+    for (int i = 0; i < 4096; i++) {
+        delete tangents[i];
+        delete bitangents[i];
+    }
 }
 
 std::string Renderer3D::SetFShader(const std::string &code) {
