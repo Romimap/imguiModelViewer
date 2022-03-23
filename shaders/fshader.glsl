@@ -40,7 +40,7 @@ vec3 viewDirection () {
 
 //Returns the light direction (surface to light)
 vec3 lightDirection () {
-	return normalize(vec3(2, 1, 2));
+	return normalize(vec3(2, 2, 2));
 }
 
 
@@ -54,6 +54,8 @@ vec3 h() {
 // /!\ IMPORTANT NOTE : 
 //     based on the implementation, the return value might need to be tweaked, especially the tangent & bitangent directions.
 vec3 GlobalToNormalSpace(vec3 v) {
+	mat3 tangentTransform = mat3(vTangent, vNormal, cross(vTangent, vNormal));
+	return v * tangentTransform;
 	return vec3(dot(v, vTangent), dot(v, vNormal), dot(v, -vBitangent));
 }
 
@@ -99,7 +101,7 @@ float getSpecularIntensity (sampler2D bm, sampler2D mm, int lod) {
 	}
 	
 
-	vec3 hn = GlobalToNormalSpace(normalize(h())); //TODO : Put H in normal space
+	vec3 hn = normalize(GlobalToNormalSpace(h())); //h in a space where hn.y is aligned with the mesh normal
 	hn /= hn.y;
 	vec2 hb = hn.xz - b.xy;
 	
@@ -112,11 +114,14 @@ float getSpecularIntensity (sampler2D bm, sampler2D mm, int lod) {
 	return spec;
 }
 
+
+
+
 //Returns a specular intensity based on a covariance matrix
 float getSpecularIntensity (float meanx, float meany, float varx, float vary, float covxy) {
 	if (dot(h(), vNormal) < 0) return 0.0; //Prevents specular if h is facing inside
 
-	vec3 hn = GlobalToNormalSpace(normalize(h())); //TODO : Put H in normal space
+	vec3 hn = normalize(GlobalToNormalSpace(h())); //h in a space where hn.y is aligned with the mesh normal
 	hn /= hn.y;
 	vec2 hb = hn.xz - vec2(meanx, meany);
 	
@@ -205,37 +210,21 @@ void main () {
 	
 	////////// COLOR MANAGEMENT
 	vec3 color = color_SpecularCovariance;//Set that variable to color_EyeCandy, color_SpecularCovariance or color_SpecularBM.
-	float x = covxy*1000;
-	color = vec3(x, -x, 0);
 	float exposure = 1;
 	color = colorManagement(color, exposure);
 	
 	
 	
-	//color = texture(normal, vUv).xyz;
 	////////// FRAGMENT COLOR
 	FragColor = vec4(color, 1.0);
 }
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+ure(normal, vUv).xyz;
+	////////// FRAGMENT COLOR
+	FragColor = vec4(color, 1.0);
+}
 
 
 

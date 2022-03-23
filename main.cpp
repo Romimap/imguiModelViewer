@@ -430,9 +430,9 @@ int main(int, char**)
             ImGui::End();
         }
 
-        //{//DEMO
-        //    ImGui::ShowDemoWindow();
-        //}
+        {//DEMO
+            ImGui::ShowDemoWindow();
+        }
 
         {
             ImGui::Begin("Set Path");
