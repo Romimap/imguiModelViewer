@@ -1,4 +1,4 @@
-#version 460
+#version 330
 
 in vec3 vPosition;
 in vec2 vUv;
@@ -21,8 +21,8 @@ uniform float DTIME;
 
 out vec4 FragColor;
 
-const vec3 lightColor = vec3(2, 1.2, 0.8);
-const vec3 ambientColor = vec3(0.1, 0.15, 0.25);
+const vec3 lightColor = vec3(.95, .92, .85) * 1;
+const vec3 ambientColor = vec3(0.3, 0.25, 0.35) * 1;
 
 const float pi = 3.141592;
 
@@ -40,7 +40,7 @@ vec3 viewDirection () {
 
 //Returns the light direction (surface to light)
 vec3 lightDirection () {
-	return normalize(vec3(5, 2, 0));
+	return normalize(vec3(2, 1, 2));
 }
 
 
@@ -66,14 +66,14 @@ vec3 NormalToGlobalSpace(vec3 v) {
 }
 
 
-vec3 getMicroNormal (sampler2D bm, int lod) {
+vec3 getMicroNormal (sampler2D bm, int lod, float intensity = 1) {
 	vec3 b;
 	if (lod == -1) {
 		b = texture(bm, vUv).rgb;
 	} else {
 		b = textureLod(bm, vUv, lod).rgb;
 	}
-	return normalize(vec3(b.xy / b.z, b.z).xzy);
+	return normalize(vec3(b.xy / (b.z / intensity), (b.z / intensity)).xzy);
 }
 
 
@@ -112,6 +112,24 @@ float getSpecularIntensity (sampler2D bm, sampler2D mm, int lod) {
 	return spec;
 }
 
+//Returns a specular intensity based on a covariance matrix
+float getSpecularIntensity (float meanx, float meany, float varx, float vary, float covxy) {
+	if (dot(h(), vNormal) < 0) return 0.0; //Prevents specular if h is facing inside
+
+	vec3 hn = GlobalToNormalSpace(normalize(h())); //TODO : Put H in normal space
+	hn /= hn.y;
+	vec2 hb = hn.xz - vec2(meanx, meany);
+	
+	vec3 sigma = vec3(varx, vary, covxy);
+	float det = sigma.x * sigma.y - sigma.z * sigma.z;
+	
+	float e = (hb.x*hb.x*sigma.y + hb.y*hb.y*sigma.x - 2.0*hb.x*hb.y*sigma.z);
+	float spec = (det <= 0.0) ? 0.0 : exp(-0.5 * e / det) / sqrt(det);
+	
+	return spec;
+}
+
+
 
 
 /////////// EYE CANDY
@@ -132,8 +150,10 @@ vec3 getDiffuse (sampler2D bm, sampler2D albedo, int lod) {
 	} else {
 		color = textureLod(albedo, vUv, lod).rgb;
 	}
-	//return dot(getMicroNormal(bm, lod), lightDirection()) * lightColor;
-	return (max(lightColor * dot(getMicroNormal(bm, lod), lightDirection()), 0.0) + ambientColor) * color;
+	
+	//Reduce normal map force
+	vec3 micronormal = getMicroNormal(bm, lod);
+	return (max(lightColor * (dot(micronormal, lightDirection()) * 0.5 + 0.5), 0.0) + ambientColor) * color;
 }
 
 
@@ -149,19 +169,73 @@ vec3 colorManagement (vec3 color, float exposure) {
 
 void main () {
 	int lod = int(mod(TIME, 6));
-	lod = -1; //AUTO LOD
-	//lod = 5;
-
-	vec3 color;
-	//color = vec3(getSpecularIntensity(bmap, mmap, lod));
-	//color = getSpecular(bmap, mmap, lod, 1);
+	lod = -1; //Auto lod
 	
-	color = getSpecular(bmap, mmap, lod, 1) + getDiffuse(bmap, albedo, lod);
-	float exposure = 0.5;
+	
+	
+	////////// SPECULAR USING A B & M MAP
+	vec3 color_SpecularBM = vec3(getSpecularIntensity(bmap, mmap, lod));
+	
+	
+	
+	////////// SPECULAR USING THE MEAN, VARIANCE & COVARIANCE
+	vec3 b;
+	vec3 m;
+	if (lod == -1) {
+		b = texture(bmap, vUv).rgb;
+		m = texture(mmap, vUv).rgb;
+	} else {
+		b = textureLod(bmap, vUv, lod).rgb;
+		m = textureLod(mmap, vUv, lod).rgb;
+	}
+	float meanx = b.x;
+	float meany = b.y;
+	float varx = m.x - pow(b.x, 2);
+	float vary = m.y - pow(b.y, 2);
+	float covxy = m.z - b.x * b.y;
+	//covxy = 0; //If covariance is a pain to compute, you might want to set it to 0. Thats a strong simplification but can work.
+	vec3 color_SpecularCovariance = vec3(getSpecularIntensity(meanx, meany, varx, vary, covxy));
+	
+	
+	
+	////////// EYE CANDY
+	vec3 color_EyeCandy = getSpecular(bmap, mmap, lod, 0.2) + getDiffuse(bmap, albedo, lod);
+	
+	
+	
+	////////// COLOR MANAGEMENT
+	vec3 color = color_SpecularCovariance;//Set that variable to color_EyeCandy, color_SpecularCovariance or color_SpecularBM.
+	float x = covxy*1000;
+	color = vec3(x, -x, 0);
+	float exposure = 1;
 	color = colorManagement(color, exposure);
-
 	
+	
+	
+	//color = texture(normal, vUv).xyz;
+	////////// FRAGMENT COLOR
 	FragColor = vec4(color, 1.0);
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 

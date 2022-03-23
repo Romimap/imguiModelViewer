@@ -134,7 +134,11 @@ int main(int, char**)
     cameraPosition = newCamPosition;
     const char* fshaderfilepath = "./shaders/fshader.glsl";
     const char* vshaderfilepath = "./shaders/vshader.glsl";
+    static char albedoPath[256] = "textures/Noises/1.png";
+    static char normalPath[256] = "textures/Noises/1_Normal.png";        
     Renderer3D renderer3D(size, cameraPosition, "./models/bigGrid.obj", fshaderfilepath, vshaderfilepath);
+    renderer3D.SetAlbedo(albedoPath);
+    renderer3D.SetNormal(normalPath);
 
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_CULL_FACE);
@@ -423,6 +427,29 @@ int main(int, char**)
             //ImGuizmo::DrawCubes((float*)&renderer3D.getViewMatrix()[0][0], (float*)& renderer3D.getProjectionMatrix()[0][0], (float*)& matrix[0][0], 1);
    
            
+            ImGui::End();
+        }
+
+        //{//DEMO
+        //    ImGui::ShowDemoWindow();
+        //}
+
+        {
+            ImGui::Begin("Set Path");
+
+            if (ImGui::InputText("Albedo path", albedoPath, 256, ImGuiInputTextFlags_EnterReturnsTrue)) {
+                renderer3D.SetAlbedo(albedoPath);
+            }
+
+            if (ImGui::InputText("Normap path", normalPath, 256, ImGuiInputTextFlags_EnterReturnsTrue)) {
+                renderer3D.SetNormal(normalPath);
+            }
+
+            static char screenPath[256] = "screenshots/screen.bmp";
+            if (ImGui::InputText("Screenshot", screenPath, 256, ImGuiInputTextFlags_EnterReturnsTrue)) {
+                renderer3D.Screenshot(screenPath);
+            }
+
             ImGui::End();
         }
 
