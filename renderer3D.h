@@ -54,7 +54,7 @@ private:
 
     glm::vec3 *_cameraPosition;
 
-    float s = 5;
+    float s = 25;
     int mip_levels = 8;
     float max_aniso = 1;
 
@@ -110,8 +110,8 @@ Renderer3D::Renderer3D(ImVec2 size, glm::vec3 &cameraPosition, const char* model
     _viewMatrix = glm::lookAt(*_cameraPosition, glm::vec3(0, 0, 0), glm::vec3(0, 1, 0));
 
 
-    SetAlbedo("textures/Noises/1.png");
-    SetNormal("textures/Noises/1_Normal.png"); 
+    SetAlbedo("textures/anisonoise.png");
+    SetNormal("textures/anisonoise_Normal.png"); 
     {
         glGenTextures(1, &_roughness);
         glBindTexture(GL_TEXTURE_2D, _roughness);
@@ -171,7 +171,7 @@ void Renderer3D::SetNormal(const char* path) {
     glGenTextures(1, &_normal);
     glBindTexture(GL_TEXTURE_2D, _normal);
     int w, h, nbC;
-    unsigned char *data = stbi_load(path, &w, &h, &nbC, 0); 
+    unsigned char *data = stbi_load(path, &w, &h, &nbC, 0);
     glTexStorage2D(GL_TEXTURE_2D, mip_levels, GL_RGB8, w, h);
     glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, w, h, GL_RGB, GL_UNSIGNED_BYTE, data);
     glGenerateMipmap(GL_TEXTURE_2D);
@@ -238,6 +238,7 @@ void Renderer3D::Screenshot (const char* path) {
     glReadPixels(0, 0, (int)_size.x, (int)_size.y, GL_RGB, GL_UNSIGNED_BYTE, pixels);
     stbi_flip_vertically_on_write(1);
     stbi_write_bmp(path, (int)_size.x, (int)_size.y, 3, pixels);
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
 void Renderer3D::Draw(ImVec2 size, ImVec4 clearColor, float dt, float t) {

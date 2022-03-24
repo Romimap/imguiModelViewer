@@ -40,7 +40,7 @@ vec3 viewDirection () {
 
 //Returns the light direction (surface to light)
 vec3 lightDirection () {
-	return normalize(vec3(2, 2, 2));
+	return normalize(vec3(0, 0.75, 2));
 }
 
 
@@ -56,7 +56,6 @@ vec3 h() {
 vec3 GlobalToNormalSpace(vec3 v) {
 	mat3 tangentTransform = mat3(vTangent, vNormal, cross(vTangent, vNormal));
 	return v * tangentTransform;
-	return vec3(dot(v, vTangent), dot(v, vNormal), dot(v, -vBitangent));
 }
 
 
@@ -64,7 +63,8 @@ vec3 GlobalToNormalSpace(vec3 v) {
 // /!\ IMPORTANT NOTE : 
 //     based on the implementation, the return value might need to be tweaked, especially the tangent & bitangent directions.
 vec3 NormalToGlobalSpace(vec3 v) {
-	return v.x * -vTangent + v.y * vNormal + v.z * -vBitangent;
+	mat3 tangentTransform = mat3(vTangent, vNormal, cross(vTangent, vNormal));
+	return v * inverse(tangentTransform);
 }
 
 
@@ -78,6 +78,41 @@ vec3 getMicroNormal (sampler2D bm, int lod, float intensity = 1) {
 	return normalize(vec3(b.xy / (b.z / intensity), (b.z / intensity)).xzy);
 }
 
+vec3 GlobalToMicroNormalSpace(vec3 v) {
+	vec3 n = normalize(NormalToGlobalSpace(texture(normal, vUv).xzy));
+	mat3 tangentTransform = mat3(cross(cross(vTangent, n), n), n, cross(vTangent, n));
+	return v * tangentTransform;
+}
+
+
+vec3 colorRamp (float t, float vmin=0, float vmax=1) {
+	t = (t / (vmax - vmin)) - vmin;
+	vec3 C[5] = vec3[5](
+				vec3(0.0, 0.0, 0.1),
+				vec3(0.2, 1.0, 0.1),
+				vec3(1.0, 1.0, 0.2),
+				vec3(1.0, 0.2, 0.1),
+				vec3(1.0, 1.0, 1.0));
+	
+	float q[5] = float[5](
+				0,
+				0.125,
+				0.25,
+				0.5,
+				1);
+	
+	int i;
+	
+	for (i = 1; i < 4; i++) {
+		if (t < q[i]) break;
+	}
+	
+	vec3 c1 = C[i - 1];
+	vec3 c2 = C[i];
+	float m = (t - q[i - 1])/(q[i] - q[i - 1]);
+	
+	return mix(c1, c2, m);
+}
 
 
 /////////// LEAN MAPPING
@@ -136,6 +171,27 @@ float getSpecularIntensity (float meanx, float meany, float varx, float vary, fl
 
 
 
+/////////// INTUITIVE SHADING
+
+
+
+float getIntuitiveSpecularIntensity (float s) {
+	if (dot(h(), vNormal) < 0) return 0.0; //Prevents specular if h is facing inside
+
+	vec3 hn = normalize(GlobalToMicroNormalSpace(h())); //h in a space where hn.y is aligned with the mesh normal
+	hn /= hn.y;
+	vec2 hb = hn.xz + vec2(-0.5, 0.5);//Not quite sure why hn would not be @ 0, 0, but we need that...
+	
+	vec3 sigma = vec3(1/s, 1/s, 0);
+	float det = sigma.x * sigma.y - sigma.z * sigma.z;
+	
+	float e = (hb.x*hb.x*sigma.y + hb.y*hb.y*sigma.x - 2.0*hb.x*hb.y*sigma.z);
+	float spec = (det <= 0.0) ? 0.0 : exp(-0.5 * e / det) / sqrt(det);
+	
+	return spec;
+}
+
+
 
 /////////// EYE CANDY
 
@@ -177,10 +233,8 @@ void main () {
 	lod = -1; //Auto lod
 	
 	
-	
 	////////// SPECULAR USING A B & M MAP
-	vec3 color_SpecularBM = vec3(getSpecularIntensity(bmap, mmap, lod));
-	
+	float float_SpecularBM = getSpecularIntensity(bmap, mmap, lod);
 	
 	
 	////////// SPECULAR USING THE MEAN, VARIANCE & COVARIANCE
@@ -199,32 +253,31 @@ void main () {
 	float vary = m.y - pow(b.y, 2);
 	float covxy = m.z - b.x * b.y;
 	//covxy = 0; //If covariance is a pain to compute, you might want to set it to 0. Thats a strong simplification but can work.
-	vec3 color_SpecularCovariance = vec3(getSpecularIntensity(meanx, meany, varx, vary, covxy));
+	float float_SpecularCovariance = getSpecularIntensity(meanx, meany, varx, vary, covxy);
 	
+	
+	////////// INTUITIVE SPECULAR
+	float float_SpecularIntuitive = getIntuitiveSpecularIntensity(25);
 	
 	
 	////////// EYE CANDY
 	vec3 color_EyeCandy = getSpecular(bmap, mmap, lod, 0.2) + getDiffuse(bmap, albedo, lod);
 	
 	
-	
 	////////// COLOR MANAGEMENT
-	vec3 color = color_SpecularCovariance;//Set that variable to color_EyeCandy, color_SpecularCovariance or color_SpecularBM.
-	float exposure = 1;
+	vec3 color = vec3(float_SpecularCovariance);//Set that variable to color_EyeCandy, color_SpecularCovariance or color_SpecularBM.
+	float exposure = 0.5;
 	color = colorManagement(color, exposure);
 	
 	
+	///////// COLOR RAMP
+	float t;
+	t = float_SpecularCovariance; //float_SpecularCovariance float_SpecularIntuitive
+	color = colorRamp(t, 0, 20.0);
+	//color = vec3(t);
 	
 	////////// FRAGMENT COLOR
 	FragColor = vec4(color, 1.0);
 }
-
-
-
-ure(normal, vUv).xyz;
-	////////// FRAGMENT COLOR
-	FragColor = vec4(color, 1.0);
-}
-
 
 
