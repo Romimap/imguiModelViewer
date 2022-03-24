@@ -54,7 +54,7 @@ private:
 
     glm::vec3 *_cameraPosition;
 
-    float s = 25;
+    float s = 250;
     int mip_levels = 8;
     float max_aniso = 1;
 

@@ -40,7 +40,7 @@ vec3 viewDirection () {
 
 //Returns the light direction (surface to light)
 vec3 lightDirection () {
-	return normalize(vec3(0, 0.75, 2));
+	return normalize(vec3(0, 2, 1));
 }
 
 
@@ -88,7 +88,7 @@ vec3 GlobalToMicroNormalSpace(vec3 v) {
 vec3 colorRamp (float t, float vmin=0, float vmax=1) {
 	t = (t / (vmax - vmin)) - vmin;
 	vec3 C[5] = vec3[5](
-				vec3(0.0, 0.0, 0.1),
+				vec3(0.0, 0.0, 0.2),
 				vec3(0.2, 1.0, 0.1),
 				vec3(1.0, 1.0, 0.2),
 				vec3(1.0, 0.2, 0.1),
@@ -253,11 +253,12 @@ void main () {
 	float vary = m.y - pow(b.y, 2);
 	float covxy = m.z - b.x * b.y;
 	//covxy = 0; //If covariance is a pain to compute, you might want to set it to 0. Thats a strong simplification but can work.
+	//covxy = (varx * vary) - (varx - meanx) * (vary - meany);
 	float float_SpecularCovariance = getSpecularIntensity(meanx, meany, varx, vary, covxy);
 	
 	
 	////////// INTUITIVE SPECULAR
-	float float_SpecularIntuitive = getIntuitiveSpecularIntensity(25);
+	float float_SpecularIntuitive = getIntuitiveSpecularIntensity(250);
 	
 	
 	////////// EYE CANDY
@@ -272,12 +273,48 @@ void main () {
 	
 	///////// COLOR RAMP
 	float t;
-	t = float_SpecularCovariance; //float_SpecularCovariance float_SpecularIntuitive
-	color = colorRamp(t, 0, 20.0);
+
+	t = getSpecularIntensity(meanx, meany, varx, vary, covxy);
+	//t = abs(float_SpecularCovariance - getSpecularIntensity(meanx, meany, varx, vary, 0)); //float_SpecularCovariance float_SpecularIntuitive
+	//t = abs(varx - vary);
+	color = colorRamp(t, 0, 100);
 	//color = vec3(t);
 	
 	////////// FRAGMENT COLOR
 	FragColor = vec4(color, 1.0);
 }
+
+
+
+
+
+
+
+
+
+or = vec4(color, 1.0);
+}
+
+
+
+
+
+
+
+
+
+.0);
+}
+
+
+
+
+
+
+
+
+
+
+
 
 
