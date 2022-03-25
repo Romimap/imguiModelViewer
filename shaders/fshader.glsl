@@ -27,10 +27,24 @@ const vec3 ambientColor = vec3(0.3, 0.25, 0.35) * 1;
 const float pi = 3.141592;
 
 
+const mat2 shear = mat2(
+		vec2(1, 0),
+		vec2(-0.5, 1)
+	);
+	
+const mat2 scale = mat2(
+		vec2(1, 0),
+		vec2(0, 1 / sqrt(0.75))
+	);
+
 
 /////////// UTILS
 
 
+//Returns a random vec2 in the range [0, 1]
+vec2 rand2(vec2 seed) {
+	return fract(vec2(sin((seed.x + 12.25546)* 12.98498), sin((seed.y - 15.54546) * 71.20153)) * 43.513453);
+}
 
 //Returns the view direction (surface to camera)
 vec3 viewDirection () {
@@ -112,6 +126,49 @@ vec3 colorRamp (float t, float vmin=0, float vmax=1) {
 	float m = (t - q[i - 1])/(q[i] - q[i - 1]);
 	
 	return mix(c1, c2, m);
+}
+
+
+void triangleGrid(vec2 uv,
+	out float w1, out float w2, out float w3,
+	out vec2 vertex1, out vec2 vertex2, out vec2 vertex3)
+{
+
+	// Skew input space into simplex triangle grid
+    mat2 T = scale * shear;
+	vec2 skewedCoord = T * uv;
+
+	// Compute local triangle vertex IDs and local barycentric coordinates
+	vec2 baseId = floor(skewedCoord);
+	vec3 temp = vec3(fract(skewedCoord), 0);
+	temp.z = 1.0 - temp.x - temp.y;
+	if (temp.z > 0.)
+	{
+		w1 = temp.z;
+		w2 = temp.y;
+		w3 = temp.x;
+		vertex1 = baseId;
+		vertex2 = baseId + vec2(0, 1.);
+		vertex3 = baseId + vec2(1., 0);
+	}
+	else
+	{
+		w1 = -temp.z;
+		w2 = 1.0 - temp.y;
+		w3 = 1.0 - temp.x;
+		vertex1 = baseId + vec2(1., 1.);
+		vertex2 = baseId + vec2(1., 0);
+		vertex3 = baseId + vec2(0, 1.);
+	}
+    
+    mat2 scale_inv = inverse(scale);
+    mat2 shear_inv = inverse(shear);
+    mat2 T_inv = shear_inv * scale_inv;
+           
+    vertex1 = T_inv*vec2(vertex1);
+    vertex2 = T_inv*vec2(vertex2);
+    vertex3 = T_inv*vec2(vertex3);
+    
 }
 
 
@@ -280,8 +337,33 @@ void main () {
 	color = colorRamp(t, 0, 100);
 	//color = vec3(t);
 	
+	float w1;
+	float w2;
+	float w3; //Weights
+	vec2 v1;
+	vec2 v2;
+	vec2 v3; //Vertices
+
+	triangleGrid(vUv, w1, w2, w3, v1, v2, v3);
+
+	vec2 uv1 = rand2(v1) + vUv;
+	vec2 uv2 = rand2(v2) + vUv;
+	vec2 uv3 = rand2(v3) + vUv;
+
+	vec3 C1 = texture(albedo, uv1).rgb;
+	vec3 C2 = texture(albedo, uv2).rgb;
+	vec3 C3 = texture(albedo, uv3).rgb;
+
+	vec3 G = w1*C1 + w2*C2 + w3*C3;
+	G = G - textureLod(albedo, vUv, 8).rgb;
+	G = G * inversesqrt(w1*w1 + w2*w2 + w3*w3);
+	G = G + textureLod(albedo, vUv, 8).rgb;
+
+	color = G;
+
 	////////// FRAGMENT COLOR
 	FragColor = vec4(color, 1.0);
 }
+
 
 
