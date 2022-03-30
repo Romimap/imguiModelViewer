@@ -134,9 +134,11 @@ int main(int, char**)
     cameraPosition = newCamPosition;
     const char* fshaderfilepath = "./shaders/fshader.glsl";
     const char* vshaderfilepath = "./shaders/vshader.glsl";
-    static char albedoPath[256] = "textures/Noises/1.png";
-    static char normalPath[256] = "textures/Noises/1_Normal.png";        
+    static char albedoPath[256] = "textures/Gravel_Color.png";
+    static char normalPath[256] = "textures/Gravel_NormalGL.png";
+
     Renderer3D renderer3D(size, cameraPosition, "./models/bigGrid.obj", fshaderfilepath, vshaderfilepath);
+
     renderer3D.SetAlbedo(albedoPath);
     renderer3D.SetNormal(normalPath);
 
@@ -257,6 +259,8 @@ int main(int, char**)
     //TIME
     float time = 0;
     float deltaTime = 0;
+
+    glEnable(GL_DEPTH_TEST);
 
     // Main loop
     while (!glfwWindowShouldClose(window))

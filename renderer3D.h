@@ -45,6 +45,8 @@ private:
     GLuint _roughness = 0;
     GLuint _bmap = 0;
     GLuint _mmap = 0;
+    GLuint _constantSigma = 0;
+    GLuint _mipchart = 0;
 
     glm::mat4x4 _projectionMatrix;
     glm::mat4x4 _viewMatrix;
@@ -96,11 +98,19 @@ Renderer3D::Renderer3D(ImVec2 size, glm::vec3 &cameraPosition, const char* model
     glBindTexture(GL_TEXTURE_2D, _outputColor);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, _size.x, _size.y, 0,  GL_RGB, GL_UNSIGNED_BYTE, NULL);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST_MIPMAP_LINEAR);  
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);  
 
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, _outputColor, 0);  
     GLenum DrawBuffers[1] = {GL_COLOR_ATTACHMENT0};
     glDrawBuffers(1, DrawBuffers);
+
+    glGenTextures(1, &_outputDepth);
+    glBindTexture(GL_TEXTURE_2D, _outputDepth);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, _size.x, _size.y, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, _outputDepth, 0);
 
     if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
 	    printf("ERROR::FRAMEBUFFER:: Framebuffer is not complete!\n");
@@ -109,9 +119,6 @@ Renderer3D::Renderer3D(ImVec2 size, glm::vec3 &cameraPosition, const char* model
     _modelMatrix = glm::mat4x4(1.0f);
     _viewMatrix = glm::lookAt(*_cameraPosition, glm::vec3(0, 0, 0), glm::vec3(0, 1, 0));
 
-
-    SetAlbedo("textures/anisonoise.png");
-    SetNormal("textures/anisonoise_Normal.png"); 
     {
         glGenTextures(1, &_roughness);
         glBindTexture(GL_TEXTURE_2D, _roughness);
@@ -139,6 +146,35 @@ Renderer3D::Renderer3D(ImVec2 size, glm::vec3 &cameraPosition, const char* model
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
         glTexParameterf(GL_TEXTURE_2D, GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, max_aniso);
+    }
+    { // MIP CHART
+        int mipw;
+        int miph;
+        int mipnbC;
+
+        glGenTextures(1, &_mipchart);
+        glBindTexture(GL_TEXTURE_2D, _mipchart);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 9);
+
+        unsigned char *mip0 = stbi_load("textures/MIP/0.png", &mipw, &miph, &mipnbC, 0);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8, 256, 256, 0, GL_RGB, GL_UNSIGNED_BYTE, mip0);
+        unsigned char *mip1 = stbi_load("textures/MIP/1.png", &mipw, &miph, &mipnbC, 0);
+        glTexImage2D(GL_TEXTURE_2D, 1, GL_RGB8, 128, 128, 0, GL_RGB, GL_UNSIGNED_BYTE, mip1);
+        unsigned char *mip2 = stbi_load("textures/MIP/2.png", &mipw, &miph, &mipnbC, 0);
+        glTexImage2D(GL_TEXTURE_2D, 2, GL_RGB8, 64 , 64 , 0, GL_RGB, GL_UNSIGNED_BYTE, mip2);
+        unsigned char *mip3 = stbi_load("textures/MIP/3.png", &mipw, &miph, &mipnbC, 0);
+        glTexImage2D(GL_TEXTURE_2D, 3, GL_RGB8, 32 , 32 , 0, GL_RGB, GL_UNSIGNED_BYTE, mip3);
+        unsigned char *mip4 = stbi_load("textures/MIP/4.png", &mipw, &miph, &mipnbC, 0);
+        glTexImage2D(GL_TEXTURE_2D, 4, GL_RGB8, 16 , 16 , 0, GL_RGB, GL_UNSIGNED_BYTE, mip4);
+        unsigned char *mip5 = stbi_load("textures/MIP/5.png", &mipw, &miph, &mipnbC, 0);
+        glTexImage2D(GL_TEXTURE_2D, 5, GL_RGB8, 8  , 8  , 0, GL_RGB, GL_UNSIGNED_BYTE, mip5);
+        unsigned char *mip6 = stbi_load("textures/MIP/6.png", &mipw, &miph, &mipnbC, 0);
+        glTexImage2D(GL_TEXTURE_2D, 6, GL_RGB8, 4  , 4  , 0, GL_RGB, GL_UNSIGNED_BYTE, mip6);
+        unsigned char *mip7 = stbi_load("textures/MIP/7.png", &mipw, &miph, &mipnbC, 0);
+        glTexImage2D(GL_TEXTURE_2D, 7, GL_RGB8, 2  , 2  , 0, GL_RGB, GL_UNSIGNED_BYTE, mip7);
+        glTexImage2D(GL_TEXTURE_2D, 8, GL_RGB8, 1  , 1  , 0, GL_RGB, GL_UNSIGNED_BYTE, mip0);
     }
 
 
@@ -181,9 +217,10 @@ void Renderer3D::SetNormal(const char* path) {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
     glTexParameterf(GL_TEXTURE_2D, GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, max_aniso);
 
-    float *dataB = (float*)calloc(w * h * nbC, sizeof(float));
-    float *dataM = (float*)calloc(w * h * nbC, sizeof(float));
-    float sc = 5;
+    std::vector<std::vector<float>> dataB(64, std::vector<float>(0));
+    std::vector<std::vector<float>> dataM(64, std::vector<float>(0));
+    std::vector<std::vector<float>> dataS(64, std::vector<float>(0));
+
     for (int x = 0; x < w; x++) {
         for (int y = 0; y < h; y++) {
             int pixelId = nbC * x + nbC * w * y;
@@ -196,37 +233,112 @@ void Renderer3D::SetNormal(const char* path) {
             bbar[0] = std::min(1.0f, std::max(-1.0f, pix[0] / (pix[2])));
             bbar[1] = std::min(1.0f, std::max(-1.0f, pix[1] / (pix[2])));
 
-            dataB[pixelId + 0] = bbar[0];
-            dataB[pixelId + 1] = bbar[1];
-            dataB[pixelId + 2] = pix[2];
+            dataB[0].push_back(bbar[0]);
+            dataB[0].push_back(bbar[1]);
+            dataB[0].push_back(pix[2]);
 
-            dataM[pixelId + 0] = bbar[0] * bbar[0] + (1.0/s);
-            dataM[pixelId + 1] = bbar[1] * bbar[1] + (1.0/s);
-            dataM[pixelId + 2] = bbar[0] * bbar[1];
+            dataM[0].push_back(bbar[0] * bbar[0] + (1.0/s));
+            dataM[0].push_back(bbar[1] * bbar[1] + (1.0/s));
+            dataM[0].push_back(bbar[0] * bbar[1]);
+
+            dataS[0].push_back((1.0/s));
+            dataS[0].push_back((1.0/s));
+            dataS[0].push_back(0);
+
         }
     }
 
     glGenTextures(1, &_bmap);
     glBindTexture(GL_TEXTURE_2D, _bmap);
-    glTexStorage2D(GL_TEXTURE_2D, mip_levels, GL_RGB32F, w, h);
-    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, w, h, GL_RGB, GL_FLOAT, dataB);
-    glGenerateMipmap(GL_TEXTURE_2D);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-    glTexParameterf(GL_TEXTURE_2D, GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, max_aniso);
+    //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 9);
+
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB32F, w, h, 0, GL_RGB, GL_FLOAT, dataB[0].data());
 
     glGenTextures(1, &_mmap);
     glBindTexture(GL_TEXTURE_2D, _mmap);
-    glTexStorage2D(GL_TEXTURE_2D, mip_levels, GL_RGB32F, w, h);
-    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, w, h, GL_RGB, GL_FLOAT, dataM);
-    glGenerateMipmap(GL_TEXTURE_2D);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-    glTexParameterf(GL_TEXTURE_2D, GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, max_aniso);
+    //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 9);
+
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB32F, w, h, 0, GL_RGB, GL_FLOAT, dataM[0].data());
+
+    glGenTextures(1, &_constantSigma);
+    glBindTexture(GL_TEXTURE_2D, _constantSigma);
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+    //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 9);
+
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB32F, w, h, 0, GL_RGB, GL_FLOAT, dataS[0].data());
+
+
+    int mw = w;
+    int mh = h;
+    for (int i = 1; mw > 0 && mh > 0; i++) {
+        mw /= 2;
+        mh /= 2;
+
+        printf("%d, %d \n", mw, mh);
+
+        std::vector<float> Sigma(3);
+        Sigma[0] = 0.0f;
+        Sigma[1] = 0.0f;
+        Sigma[2] = 0.0f;
+        float n = 0;
+
+        for (int y = 0; y < mh; y++) {
+            for (int x = 0; x < mw; x++) {
+                std::vector<float> b(3);
+                std::vector<float> m(3);
+                int aID = nbC * (2 * x + 0) + nbC * (2 * mw) * (2 * y + 0);
+                int bID = nbC * (2 * x + 1) + nbC * (2 * mw) * (2 * y + 0);
+                int cID = nbC * (2 * x + 0) + nbC * (2 * mw) * (2 * y + 1);
+                int dID = nbC * (2 * x + 1) + nbC * (2 * mw) * (2 * y + 1);
+
+                b[0] = (dataB[i - 1][aID + 0] + dataB[i - 1][bID + 0] + dataB[i - 1][cID + 0] + dataB[i - 1][dID + 0]) / 4.0f;
+                b[1] = (dataB[i - 1][aID + 1] + dataB[i - 1][bID + 1] + dataB[i - 1][cID + 1] + dataB[i - 1][dID + 1]) / 4.0f;
+                b[2] = (dataB[i - 1][aID + 2] + dataB[i - 1][bID + 2] + dataB[i - 1][cID + 2] + dataB[i - 1][dID + 2]) / 4.0f;
+                dataB[i].push_back(b[0]);
+                dataB[i].push_back(b[1]);
+                dataB[i].push_back(b[2]);
+
+                m[0] = (dataM[i - 1][aID + 0] + dataM[i - 1][bID + 0] + dataM[i - 1][cID + 0] + dataM[i - 1][dID + 0]) / 4.0f;
+                m[1] = (dataM[i - 1][aID + 1] + dataM[i - 1][bID + 1] + dataM[i - 1][cID + 1] + dataM[i - 1][dID + 1]) / 4.0f;
+                m[2] = (dataM[i - 1][aID + 2] + dataM[i - 1][bID + 2] + dataM[i - 1][cID + 2] + dataM[i - 1][dID + 2]) / 4.0f;
+                dataM[i].push_back(m[0]);
+                dataM[i].push_back(m[1]);
+                dataM[i].push_back(m[2]);
+
+                Sigma[0] += m[0] - b[0] * b[0]; //Vx
+                Sigma[1] += m[1] - b[1] * b[1]; //Vy
+                Sigma[2] += m[2] - b[0] * b[1]; //Cxy
+                n++;
+            }
+        }
+
+        Sigma[0] /= n;
+        Sigma[1] /= n;
+        Sigma[2] /= n;
+
+        printf("Sigma: %f, %f, %f \n", Sigma[0], Sigma[1], Sigma[2]);
+
+        for (int j = 0; j < mh * mw * 3; j++) {
+            dataS[i].push_back(Sigma[0]);
+            dataS[i].push_back(Sigma[1]);
+            dataS[i].push_back(Sigma[2]);
+        }
+
+        glBindTexture(GL_TEXTURE_2D, _bmap);
+        glTexImage2D(GL_TEXTURE_2D, i, GL_RGB32F, mw, mh, 0, GL_RGB, GL_FLOAT, dataB[i].data());
+        glBindTexture(GL_TEXTURE_2D, _mmap);
+        glTexImage2D(GL_TEXTURE_2D, i, GL_RGB32F, mw, mh, 0, GL_RGB, GL_FLOAT, dataM[i].data());
+        glBindTexture(GL_TEXTURE_2D, _constantSigma);
+        glTexImage2D(GL_TEXTURE_2D, i, GL_RGB32F, mw, mh, 0, GL_RGB, GL_FLOAT, dataS[i].data());
+    }
 }
 
 
@@ -253,6 +365,14 @@ void Renderer3D::Draw(ImVec2 size, ImVec4 clearColor, float dt, float t) {
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);  
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, _outputColor, 0);
+
+        glGenTextures(1, &_outputDepth);
+        glBindTexture(GL_TEXTURE_2D, _outputDepth);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, _size.x, _size.y, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, _outputDepth, 0);
+        
         _projectionMatrix = glm::perspective<float>(glm::radians(55.0), _size.x / _size.y, 0.1f, 1000.0f);        
     }
     _viewMatrix = glm::lookAt(*_cameraPosition, glm::vec3(0, 0, 0), glm::vec3(0, 1, 0));
@@ -261,7 +381,7 @@ void Renderer3D::Draw(ImVec2 size, ImVec4 clearColor, float dt, float t) {
 
 
     glClearColor(clearColor.x, clearColor.y, clearColor.z, clearColor.w);
-    glClear(GL_COLOR_BUFFER_BIT);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
   
     glUseProgram(_shaderProgram);
 
@@ -300,9 +420,11 @@ void Renderer3D::Draw(ImVec2 size, ImVec4 clearColor, float dt, float t) {
     glBindTexture(GL_TEXTURE_2D, _mmap);
     glUniform1i(glGetUniformLocation(_shaderProgram, "mmap"), 4);
     glActiveTexture(GL_TEXTURE5);
-    glBindTexture(GL_TEXTURE_2D, _envMap);
-    glUniform1i(glGetUniformLocation(_shaderProgram, "hdri"), 5);
-
+    glBindTexture(GL_TEXTURE_2D, _mipchart);
+    glUniform1i(glGetUniformLocation(_shaderProgram, "mipchart"), 5);
+    glActiveTexture(GL_TEXTURE6);
+    glBindTexture(GL_TEXTURE_2D, _constantSigma);
+    glUniform1i(glGetUniformLocation(_shaderProgram, "constantSigma"), 6);
 
     glDrawArrays(GL_TRIANGLES, 0, _vertices.size());
 

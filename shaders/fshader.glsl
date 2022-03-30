@@ -6,13 +6,16 @@ in vec3 vNormal;
 in vec3 vTangent;
 in vec3 vBitangent;
 
+in vec4 gl_FragCoord;
+
 uniform mat4 viewMatrix;
 uniform sampler2D albedo;
 uniform sampler2D normal;
 uniform sampler2D bmap;
 uniform sampler2D mmap;
 uniform sampler2D roughness;
-uniform sampler2D hdri;
+uniform sampler2D mipchart;
+uniform sampler2D constantSigma;
 
 uniform vec3 cameraPosition;
 
@@ -21,7 +24,7 @@ uniform float DTIME;
 
 out vec4 FragColor;
 
-const vec3 lightColor = vec3(.95, .92, .85) * 1;
+const vec3 lightColor = vec3(1.0, .92, .85) * 2;
 const vec3 ambientColor = vec3(0.3, 0.25, 0.35) * 1;
 
 const float pi = 3.141592;
@@ -54,7 +57,7 @@ vec3 viewDirection () {
 
 //Returns the light direction (surface to light)
 vec3 lightDirection () {
-	return normalize(vec3(0, 2, 1));
+	return normalize(vec3(0, 5, 3));
 }
 
 
@@ -68,7 +71,7 @@ vec3 h() {
 // /!\ IMPORTANT NOTE : 
 //     based on the implementation, the return value might need to be tweaked, especially the tangent & bitangent directions.
 vec3 GlobalToNormalSpace(vec3 v) {
-	mat3 tangentTransform = mat3(vTangent, vNormal, cross(vTangent, vNormal));
+	mat3 tangentTransform = mat3(-cross(vTangent, vNormal), vNormal, -vTangent);
 	return v * tangentTransform;
 }
 
@@ -77,7 +80,7 @@ vec3 GlobalToNormalSpace(vec3 v) {
 // /!\ IMPORTANT NOTE : 
 //     based on the implementation, the return value might need to be tweaked, especially the tangent & bitangent directions.
 vec3 NormalToGlobalSpace(vec3 v) {
-	mat3 tangentTransform = mat3(vTangent, vNormal, cross(vTangent, vNormal));
+	mat3 tangentTransform = mat3(-cross(vTangent, vNormal), vNormal, -vTangent);
 	return v * inverse(tangentTransform);
 }
 
@@ -92,11 +95,6 @@ vec3 getMicroNormal (sampler2D bm, int lod, float intensity = 1) {
 	return normalize(vec3(b.xy / (b.z / intensity), (b.z / intensity)).xzy);
 }
 
-vec3 GlobalToMicroNormalSpace(vec3 v) {
-	vec3 n = normalize(NormalToGlobalSpace(texture(normal, vUv).xzy));
-	mat3 tangentTransform = mat3(cross(cross(vTangent, n), n), n, cross(vTangent, n));
-	return v * tangentTransform;
-}
 
 
 vec3 colorRamp (float t, float vmin=0, float vmax=1) {
@@ -227,41 +225,49 @@ float getSpecularIntensity (float meanx, float meany, float varx, float vary, fl
 }
 
 
-
-/////////// INTUITIVE SHADING
-
-
-
-float getIntuitiveSpecularIntensity (float s) {
-	if (dot(h(), vNormal) < 0) return 0.0; //Prevents specular if h is facing inside
-
-	vec3 hn = normalize(GlobalToMicroNormalSpace(h())); //h in a space where hn.y is aligned with the mesh normal
-	hn /= hn.y;
-	vec2 hb = hn.xz + vec2(-0.5, 0.5);//Not quite sure why hn would not be @ 0, 0, but we need that...
-	
-	vec3 sigma = vec3(1/s, 1/s, 0);
-	float det = sigma.x * sigma.y - sigma.z * sigma.z;
-	
-	float e = (hb.x*hb.x*sigma.y + hb.y*hb.y*sigma.x - 2.0*hb.x*hb.y*sigma.z);
-	float spec = (det <= 0.0) ? 0.0 : exp(-0.5 * e / det) / sqrt(det);
-	
-	return spec;
-}
-
-
-
 /////////// EYE CANDY
 
 
 
 //Returns a specular color.
-vec3 getSpecular (sampler2D bm, sampler2D mm, int lod, float intensity) {
-	return max(getSpecularIntensity(bm, mm, lod) * intensity, 0.0) * lightColor;
+vec3 getSpecular (int lod, float intensity, bool constSigm) {
+	vec3 b;
+	vec3 m;
+	vec3 s;
+	
+	if (lod == -1) {
+		b = texture(bmap, vUv).rgb;
+		m = texture(mmap, vUv).rgb;
+		s = texture(constantSigma, vUv).rgb;
+	} else {
+		b = textureLod(bmap, vUv, lod).rgb;
+		m = textureLod(mmap, vUv, lod).rgb;
+		s = textureLod(constantSigma, vUv, lod).rgb;
+	}
+	float meanx = b.x;
+	float meany = b.y;
+	float varx = m.x - pow(b.x, 2);
+	float vary = m.y - pow(b.y, 2);
+	float covxy = m.z - b.x * b.y;
+	
+	if (constSigm) {
+		varx = s.x;
+		vary = s.y;
+		covxy = s.z;
+	}
+	
+	//covxy = s.z;
+	
+	//covxy = 0; //If covariance is a pain to compute, you might want to set it to 0. Thats a strong simplification but can work.
+	float float_Specular = getSpecularIntensity(meanx, meany, varx, vary, covxy);
+	
+
+	return max(float_Specular * intensity, 0.0) * lightColor;
 }
 
 
 //Returns the diffuse color.
-vec3 getDiffuse (sampler2D bm, sampler2D albedo, int lod) {
+vec3 getDiffuse (float bias, int lod) {
 	vec3 color;
 	if (lod == -1) {
 		color = texture(albedo, vUv).rgb;
@@ -270,8 +276,9 @@ vec3 getDiffuse (sampler2D bm, sampler2D albedo, int lod) {
 	}
 	
 	//Reduce normal map force
-	vec3 micronormal = getMicroNormal(bm, lod);
-	return (max(lightColor * (dot(micronormal, lightDirection()) * 0.5 + 0.5), 0.0) + ambientColor) * color;
+	vec3 micronormal = getMicroNormal(bmap, lod);
+	vec3 n = NormalToGlobalSpace(micronormal);
+	return (max(lightColor * (dot(n, lightDirection()) * (1.0 - bias) + bias), 0.0) + ambientColor) * color;
 }
 
 
@@ -283,12 +290,14 @@ vec3 colorManagement (vec3 color, float exposure) {
 
 /////////// MAIN
 
-
+float Max(float a, float b) {
+	if (a > b) return a;
+	return b;
+}
 
 void main () {
 	int lod = int(mod(TIME, 6));
 	lod = -1; //Auto lod
-	
 	
 	////////// SPECULAR USING A B & M MAP
 	float float_SpecularBM = getSpecularIntensity(bmap, mmap, lod);
@@ -297,12 +306,15 @@ void main () {
 	////////// SPECULAR USING THE MEAN, VARIANCE & COVARIANCE
 	vec3 b;
 	vec3 m;
+	vec3 s;
 	if (lod == -1) {
 		b = texture(bmap, vUv).rgb;
 		m = texture(mmap, vUv).rgb;
+		s = texture(constantSigma, vUv).rgb;
 	} else {
 		b = textureLod(bmap, vUv, lod).rgb;
 		m = textureLod(mmap, vUv, lod).rgb;
+		s = textureLod(constantSigma, vUv, lod).rgb;
 	}
 	float meanx = b.x;
 	float meany = b.y;
@@ -310,60 +322,74 @@ void main () {
 	float vary = m.y - pow(b.y, 2);
 	float covxy = m.z - b.x * b.y;
 	//covxy = 0; //If covariance is a pain to compute, you might want to set it to 0. Thats a strong simplification but can work.
-	//covxy = (varx * vary) - (varx - meanx) * (vary - meany);
 	float float_SpecularCovariance = getSpecularIntensity(meanx, meany, varx, vary, covxy);
 	
 	
-	////////// INTUITIVE SPECULAR
-	float float_SpecularIntuitive = getIntuitiveSpecularIntensity(250);
-	
-	
 	////////// EYE CANDY
-	vec3 color_EyeCandy = getSpecular(bmap, mmap, lod, 0.2) + getDiffuse(bmap, albedo, lod);
-	
+	vec3 color_EyeCandy = getSpecular(lod, 0.1, false); //+ getDiffuse(0.05, lod);
 	
 	////////// COLOR MANAGEMENT
-	vec3 color = vec3(float_SpecularCovariance);//Set that variable to color_EyeCandy, color_SpecularCovariance or color_SpecularBM.
-	float exposure = 0.5;
+	vec3 color = color_EyeCandy;//Set that variable to color_EyeCandy, color_SpecularCovariance or color_SpecularBM.
+	float exposure = 1;
 	color = colorManagement(color, exposure);
 	
 	
 	///////// COLOR RAMP
-	float t;
-
-	t = getSpecularIntensity(meanx, meany, varx, vary, covxy);
-	//t = abs(float_SpecularCovariance - getSpecularIntensity(meanx, meany, varx, vary, 0)); //float_SpecularCovariance float_SpecularIntuitive
-	//t = abs(varx - vary);
-	color = colorRamp(t, 0, 100);
-	//color = vec3(t);
+	{
+		if (gl_FragCoord.x < 500) {
+			varx = s.x;
+			vary = s.y;
+			covxy = s.z;
+		}
+		covxy = s.z;
+		float t;
+		t = getSpecularIntensity(meanx, meany, varx, vary, covxy);
+		color = colorRamp(t, 0, 100);
+	}
 	
-	float w1;
-	float w2;
-	float w3; //Weights
-	vec2 v1;
-	vec2 v2;
-	vec2 v3; //Vertices
 
-	triangleGrid(vUv, w1, w2, w3, v1, v2, v3);
+	////////// MIP CHART
+	//if (gl_FragCoord.x > 498 && gl_FragCoord.x < 502)
+	float mult = 250;
+	float dUdx = dFdx(vUv.x) * mult;
+	float dUdy = dFdy(vUv.x) * mult;
+	float dVdx = dFdx(vUv.y) * mult;
+	float dVdy = dFdy(vUv.y) * mult;
+	float flod = (0.5 * log2(max(pow(dUdx, 2) + pow(dVdx, 2) , pow(dUdy, 2) + pow(dVdy,2))));
 
-	vec2 uv1 = rand2(v1) + vUv;
-	vec2 uv2 = rand2(v2) + vUv;
-	vec2 uv3 = rand2(v3) + vUv;
-
-	vec3 C1 = texture(albedo, uv1).rgb;
-	vec3 C2 = texture(albedo, uv2).rgb;
-	vec3 C3 = texture(albedo, uv3).rgb;
-
-	vec3 G = w1*C1 + w2*C2 + w3*C3;
-	G = G - textureLod(albedo, vUv, 8).rgb;
-	G = G * inversesqrt(w1*w1 + w2*w2 + w3*w3);
-	G = G + textureLod(albedo, vUv, 8).rgb;
-
-	color = G;
+	flod = 
+	(
+		0.5 * log2
+		(
+			max
+			(
+				max(pow(dUdx, 2),pow(dUdy, 2)),
+				max(pow(dVdx, 2),pow(dVdy, 2))
+			)
+		)
+	);
+	flod = 
+	(
+		0.5 * log2
+		(
+			max
+			(
+				pow(dUdx, 2) + pow(dVdy, 2),
+				pow(dVdx, 2) + pow(dUdy, 2)
+			)
+		)
+	);
+	color = textureLod(mipchart, vUv, flod).rgb;
+	if (mod(TIME, 1) < 0.5)
+	color = texture(mipchart, vUv).rgb;
+	//color = vec3(texture(mmap, vUv).r - pow(texture(bmap, vUv).r, 2)) * 0.5;
+	//color = texture(constantSigma, vUv).rgb;
 
 	////////// FRAGMENT COLOR
 	FragColor = vec4(color, 1.0);
 }
+
+
 
 
 
