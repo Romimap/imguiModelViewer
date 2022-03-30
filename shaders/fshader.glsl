@@ -339,6 +339,39 @@ vec3 TilingAndBlendingVariance(vec2 uv)
 	return G;
 }
 
+// By-Example procedural noise at uv
+vec3 TilingAndBlendingVarianceSq(vec2 uv)
+{
+	// Get triangle info
+	float w1, w2, w3;
+	ivec2 vertex1, vertex2, vertex3;
+	TriangleGrid(uv, w1, w2, w3, vertex1, vertex2, vertex3);
+
+	float l = 1;
+
+	float wp1 = pow(w1,l) / (pow(w1,l) + pow(w2,l) + pow(w3,l));
+	float wp2 = pow(w2,l) / (pow(w1,l) + pow(w2,l) + pow(w3,l));
+	float wp3 = pow(w3,l) / (pow(w1,l) + pow(w2,l) + pow(w3,l));
+	
+	// Assign random offset to each triangle vertex
+	vec2 uv1 = uv + hash(vertex1);
+	vec2 uv2 = uv + hash(vertex2);
+	vec2 uv3 = uv + hash(vertex3);
+
+	// Precompute UV derivatives 
+	vec2 duvdx = dFdx(uv);
+	vec2 duvdy = dFdy(uv);
+
+	// Fetch Gaussian input
+	vec3 G1 = textureGrad(var, uv1, duvdx, duvdy).rgb;
+	vec3 G2 = textureGrad(var, uv2, duvdx, duvdy).rgb;
+	vec3 G3 = textureGrad(var, uv3, duvdx, duvdy).rgb;
+
+	// non Variance-preserving blending
+	vec3 G = pow(wp1, 2)*G1 + pow(wp2, 2)*G2 + pow(wp3, 2)*G3;
+	return G;
+}
+
 
 
 /////////// EYE CANDY
@@ -459,20 +492,11 @@ void main () {
 	
 	
 	////////// FRAGMENT COLOR
-	meanx = TilingAndBlendingMean(vUv).x;
-	meany = TilingAndBlendingMean(vUv).y;
-	varx = TilingAndBlendingVariance(vUv).x;
-	vary = TilingAndBlendingVariance(vUv).y;
-	covxy = 0;
-	
+	color = TilingAndBlendingVariance(vUv);
 	if (gl_FragCoord.x < 500) {
-		varx = s.x;
-		vary = s.y;
-		covxy = 0;
+		color = TilingAndBlendingVarianceSq(vUv);
 	}
 	
 	
-	color = colorRamp(getSpecularIntensity(meanx, meany, varx, vary, covxy), 0, 100);
 	FragColor = vec4(color, 1.0);
 }
-
