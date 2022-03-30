@@ -1,4 +1,4 @@
-#version 330
+#version 400
 
 in vec3 vPosition;
 in vec2 vUv;
@@ -16,6 +16,7 @@ uniform sampler2D mmap;
 uniform sampler2D roughness;
 uniform sampler2D mipchart;
 uniform sampler2D constantSigma;
+uniform sampler2D var;
 
 uniform vec3 cameraPosition;
 
@@ -57,7 +58,7 @@ vec3 viewDirection () {
 
 //Returns the light direction (surface to light)
 vec3 lightDirection () {
-	return normalize(vec3(0, 5, 3));
+	return normalize(vec3(0, 1, 5));
 }
 
 
@@ -225,6 +226,121 @@ float getSpecularIntensity (float meanx, float meany, float varx, float vary, fl
 }
 
 
+
+/////////// TILING & BLENDING
+
+
+
+vec2 hash(vec2 p)
+{
+	return fract(sin((p) * mat2(127.1, 311.7, 269.5, 183.3) )*43758.5453);
+}
+
+
+// Compute local triangle barycentric coordinates and vertex IDs
+void TriangleGrid(vec2 uv, out float w1, out float w2, out float w3, out ivec2 vertex1, out ivec2 vertex2, out ivec2 vertex3) {
+	// Scaling of the input
+	uv *= 3.464; // 2 * sqrt(3)
+
+	// Skew input space into simplex triangle grid
+	const mat2 gridToSkewedGrid = mat2(1.0, 0.0, -0.57735027, 1.15470054);
+	vec2 skewedCoord = gridToSkewedGrid * uv;
+
+	// Compute local triangle vertex IDs and local barycentric coordinates
+	ivec2 baseId = ivec2(floor(skewedCoord));
+	vec3 temp = vec3(fract(skewedCoord), 0);
+	temp.z = 1.0 - temp.x - temp.y;
+	if (temp.z > 0.0)
+	{
+		w1 = temp.z;
+		w2 = temp.y;
+		w3 = temp.x;
+		vertex1 = baseId;
+		vertex2 = baseId + ivec2(0, 1);
+		vertex3 = baseId + ivec2(1, 0);
+	}
+	else
+	{
+		w1 = -temp.z;
+		w2 = 1.0 - temp.y;
+		w3 = 1.0 - temp.x;
+		vertex1 = baseId + ivec2(1, 1);
+		vertex2 = baseId + ivec2(1, 0);
+		vertex3 = baseId + ivec2(0, 1);
+	}
+}
+
+
+// By-Example procedural noise at uv
+vec3 TilingAndBlendingMean(vec2 uv)
+{
+	// Get triangle info
+	float w1, w2, w3;
+	ivec2 vertex1, vertex2, vertex3;
+	TriangleGrid(uv, w1, w2, w3, vertex1, vertex2, vertex3);
+
+	float l = 5;
+
+	float wp1 = pow(w1,l) / (pow(w1,l) + pow(w2,l) + pow(w3,l));
+	float wp2 = pow(w2,l) / (pow(w1,l) + pow(w2,l) + pow(w3,l));
+	float wp3 = pow(w3,l) / (pow(w1,l) + pow(w2,l) + pow(w3,l));
+	
+	// Assign random offset to each triangle vertex
+	vec2 uv1 = uv + hash(vertex1);
+	vec2 uv2 = uv + hash(vertex2);
+	vec2 uv3 = uv + hash(vertex3);
+
+	// Precompute UV derivatives 
+	vec2 duvdx = dFdx(uv);
+	vec2 duvdy = dFdy(uv);
+
+	// Fetch Gaussian input
+	vec3 G1 = textureGrad(bmap, uv1, duvdx, duvdy).rgb;
+	vec3 G2 = textureGrad(bmap, uv2, duvdx, duvdy).rgb;
+	vec3 G3 = textureGrad(bmap, uv3, duvdx, duvdy).rgb;
+
+	// Variance-preserving blending
+	vec3 G = wp1*G1 + wp2*G2 + wp3*G3;
+	return G;
+}
+
+
+
+// By-Example procedural noise at uv
+vec3 TilingAndBlendingVariance(vec2 uv)
+{
+	// Get triangle info
+	float w1, w2, w3;
+	ivec2 vertex1, vertex2, vertex3;
+	TriangleGrid(uv, w1, w2, w3, vertex1, vertex2, vertex3);
+
+	float l = 1;
+
+	float wp1 = pow(w1,l) / (pow(w1,l) + pow(w2,l) + pow(w3,l));
+	float wp2 = pow(w2,l) / (pow(w1,l) + pow(w2,l) + pow(w3,l));
+	float wp3 = pow(w3,l) / (pow(w1,l) + pow(w2,l) + pow(w3,l));
+	
+	// Assign random offset to each triangle vertex
+	vec2 uv1 = uv + hash(vertex1);
+	vec2 uv2 = uv + hash(vertex2);
+	vec2 uv3 = uv + hash(vertex3);
+
+	// Precompute UV derivatives 
+	vec2 duvdx = dFdx(uv);
+	vec2 duvdy = dFdy(uv);
+
+	// Fetch Gaussian input
+	vec3 G1 = textureGrad(var, uv1, duvdx, duvdy).rgb;
+	vec3 G2 = textureGrad(var, uv2, duvdx, duvdy).rgb;
+	vec3 G3 = textureGrad(var, uv3, duvdx, duvdy).rgb;
+
+	// non Variance-preserving blending
+	vec3 G = wp1*G1 + wp2*G2 + wp3*G3;
+	return G;
+}
+
+
+
 /////////// EYE CANDY
 
 
@@ -290,11 +406,6 @@ vec3 colorManagement (vec3 color, float exposure) {
 
 /////////// MAIN
 
-float Max(float a, float b) {
-	if (a > b) return a;
-	return b;
-}
-
 void main () {
 	int lod = int(mod(TIME, 6));
 	lod = -1; //Auto lod
@@ -326,70 +437,42 @@ void main () {
 	
 	
 	////////// EYE CANDY
-	vec3 color_EyeCandy = getSpecular(lod, 0.1, false); //+ getDiffuse(0.05, lod);
+	vec3 color_EyeCandy = getSpecular(lod, 0.01, false) + getDiffuse(0.05, lod);
 	
 	////////// COLOR MANAGEMENT
 	vec3 color = color_EyeCandy;//Set that variable to color_EyeCandy, color_SpecularCovariance or color_SpecularBM.
-	float exposure = 1;
+	float exposure = 0.5;
 	color = colorManagement(color, exposure);
 	
 	
 	///////// COLOR RAMP
-	{
-		if (gl_FragCoord.x < 500) {
-			varx = s.x;
-			vary = s.y;
-			covxy = s.z;
-		}
-		covxy = s.z;
-		float t;
-		t = getSpecularIntensity(meanx, meany, varx, vary, covxy);
-		color = colorRamp(t, 0, 100);
-	}
+	//{
+	//	float t;
+	//	t = getSpecularIntensity(meanx, meany, varx, vary, covxy);
+	//	color = colorRamp(t, 0, 100);
+	//}
 	
 
 	////////// MIP CHART
 	//if (gl_FragCoord.x > 498 && gl_FragCoord.x < 502)
-	float mult = 250;
-	float dUdx = dFdx(vUv.x) * mult;
-	float dUdy = dFdy(vUv.x) * mult;
-	float dVdx = dFdx(vUv.y) * mult;
-	float dVdy = dFdy(vUv.y) * mult;
-	float flod = (0.5 * log2(max(pow(dUdx, 2) + pow(dVdx, 2) , pow(dUdy, 2) + pow(dVdy,2))));
-
-	flod = 
-	(
-		0.5 * log2
-		(
-			max
-			(
-				max(pow(dUdx, 2),pow(dUdy, 2)),
-				max(pow(dVdx, 2),pow(dVdy, 2))
-			)
-		)
-	);
-	flod = 
-	(
-		0.5 * log2
-		(
-			max
-			(
-				pow(dUdx, 2) + pow(dVdy, 2),
-				pow(dVdx, 2) + pow(dUdy, 2)
-			)
-		)
-	);
-	color = textureLod(mipchart, vUv, flod).rgb;
-	if (mod(TIME, 1) < 0.5)
-	color = texture(mipchart, vUv).rgb;
-	//color = vec3(texture(mmap, vUv).r - pow(texture(bmap, vUv).r, 2)) * 0.5;
-	//color = texture(constantSigma, vUv).rgb;
-
+	//color = texture(mipchart, vUv).rgb;
+	
+	
 	////////// FRAGMENT COLOR
+	meanx = TilingAndBlendingMean(vUv).x;
+	meany = TilingAndBlendingMean(vUv).y;
+	varx = TilingAndBlendingVariance(vUv).x;
+	vary = TilingAndBlendingVariance(vUv).y;
+	covxy = 0;
+	
+	if (gl_FragCoord.x < 500) {
+		varx = s.x;
+		vary = s.y;
+		covxy = 0;
+	}
+	
+	
+	color = colorRamp(getSpecularIntensity(meanx, meany, varx, vary, covxy), 0, 100);
 	FragColor = vec4(color, 1.0);
 }
-
-
-
-
 

@@ -134,8 +134,8 @@ int main(int, char**)
     cameraPosition = newCamPosition;
     const char* fshaderfilepath = "./shaders/fshader.glsl";
     const char* vshaderfilepath = "./shaders/vshader.glsl";
-    static char albedoPath[256] = "textures/Gravel_Color.png";
-    static char normalPath[256] = "textures/Gravel_NormalGL.png";
+    static char albedoPath[256] = "textures/anisonoiseTex.png";
+    static char normalPath[256] = "textures/anisonoiseTex_Normal.png";
 
     Renderer3D renderer3D(size, cameraPosition, "./models/bigGrid.obj", fshaderfilepath, vshaderfilepath);
 

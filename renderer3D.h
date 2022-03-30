@@ -46,6 +46,7 @@ private:
     GLuint _bmap = 0;
     GLuint _mmap = 0;
     GLuint _constantSigma = 0;
+    GLuint _var = 0;
     GLuint _mipchart = 0;
 
     glm::mat4x4 _projectionMatrix;
@@ -220,6 +221,7 @@ void Renderer3D::SetNormal(const char* path) {
     std::vector<std::vector<float>> dataB(64, std::vector<float>(0));
     std::vector<std::vector<float>> dataM(64, std::vector<float>(0));
     std::vector<std::vector<float>> dataS(64, std::vector<float>(0));
+    std::vector<std::vector<float>> dataV(64, std::vector<float>(0));
 
     for (int x = 0; x < w; x++) {
         for (int y = 0; y < h; y++) {
@@ -245,6 +247,9 @@ void Renderer3D::SetNormal(const char* path) {
             dataS[0].push_back((1.0/s));
             dataS[0].push_back(0);
 
+            dataV[0].push_back((1.0/s));
+            dataV[0].push_back((1.0/s));
+            dataV[0].push_back(0);
         }
     }
 
@@ -275,10 +280,20 @@ void Renderer3D::SetNormal(const char* path) {
 
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB32F, w, h, 0, GL_RGB, GL_FLOAT, dataS[0].data());
 
+    glGenTextures(1, &_var);
+    glBindTexture(GL_TEXTURE_2D, _var);
 
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+    //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 9);
+
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB32F, w, h, 0, GL_RGB, GL_FLOAT, dataV[0].data());
+
+
+    //width and height of the mipmap levels
     int mw = w;
     int mh = h;
-    for (int i = 1; mw > 0 && mh > 0; i++) {
+    for (int i = 1; mw > 0 && mh > 0; i++) { //For each mipmap level
         mw /= 2;
         mh /= 2;
 
@@ -316,6 +331,30 @@ void Renderer3D::SetNormal(const char* path) {
                 Sigma[0] += m[0] - b[0] * b[0]; //Vx
                 Sigma[1] += m[1] - b[1] * b[1]; //Vy
                 Sigma[2] += m[2] - b[0] * b[1]; //Cxy
+
+                int footprintSize = pow(2, i);
+
+                //For each u in the footprint
+                std::vector<float> v(3);
+                int startX = x * footprintSize;
+                int startY = y * footprintSize;
+                for (int j = startX; j < footprintSize + startX; j++) {
+                    for (int k = startY; k < footprintSize + startY; k++) {
+                        int uid = nbC * j + nbC * w * k;
+
+                        v[0] += (pow(dataB[0][uid + 0] - b[0], 2));
+                        v[1] += (pow(dataB[0][uid + 1] - b[1], 2));
+                        v[2] += (pow(dataB[0][uid + 2] - b[2], 2));
+                    }
+                }
+                v[0] /= pow(footprintSize, 2);
+                v[1] /= pow(footprintSize, 2);
+                v[2] /= pow(footprintSize, 2);
+
+                dataV[i].push_back(v[0] + (1.0/s));
+                dataV[i].push_back(v[1] + (1.0/s));
+                dataV[i].push_back(v[2]);
+
                 n++;
             }
         }
@@ -338,9 +377,10 @@ void Renderer3D::SetNormal(const char* path) {
         glTexImage2D(GL_TEXTURE_2D, i, GL_RGB32F, mw, mh, 0, GL_RGB, GL_FLOAT, dataM[i].data());
         glBindTexture(GL_TEXTURE_2D, _constantSigma);
         glTexImage2D(GL_TEXTURE_2D, i, GL_RGB32F, mw, mh, 0, GL_RGB, GL_FLOAT, dataS[i].data());
+        glBindTexture(GL_TEXTURE_2D, _var);
+        glTexImage2D(GL_TEXTURE_2D, i, GL_RGB32F, mw, mh, 0, GL_RGB, GL_FLOAT, dataV[i].data());
     }
 }
-
 
 void Renderer3D::Screenshot (const char* path) {
     glBindFramebuffer(GL_FRAMEBUFFER, _FBO); //Bind
@@ -425,6 +465,9 @@ void Renderer3D::Draw(ImVec2 size, ImVec4 clearColor, float dt, float t) {
     glActiveTexture(GL_TEXTURE6);
     glBindTexture(GL_TEXTURE_2D, _constantSigma);
     glUniform1i(glGetUniformLocation(_shaderProgram, "constantSigma"), 6);
+    glActiveTexture(GL_TEXTURE7);
+    glBindTexture(GL_TEXTURE_2D, _var);
+    glUniform1i(glGetUniformLocation(_shaderProgram, "var"), 7);
 
     glDrawArrays(GL_TRIANGLES, 0, _vertices.size());
 
