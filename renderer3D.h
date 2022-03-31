@@ -57,7 +57,7 @@ private:
 
     glm::vec3 *_cameraPosition;
 
-    float s = 250;
+    float s = 25;
     int mip_levels = 8;
     float max_aniso = 1;
 
@@ -350,9 +350,12 @@ void Renderer3D::SetNormal(const char* path) {
                 v[0] /= pow(footprintSize, 2);
                 v[1] /= pow(footprintSize, 2);
                 v[2] /= pow(footprintSize, 2);
+                v[0] += 1/s;
+                v[1] += 1/s;
+                v[2] += 1/s;
 
-                dataV[i].push_back(v[0] + (1.0/s));
-                dataV[i].push_back(v[1] + (1.0/s));
+                dataV[i].push_back(v[0]);
+                dataV[i].push_back(v[1]);
                 dataV[i].push_back(v[2]);
 
                 n++;

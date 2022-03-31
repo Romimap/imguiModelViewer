@@ -492,11 +492,15 @@ void main () {
 	
 	
 	////////// FRAGMENT COLOR
-	color = TilingAndBlendingVariance(vUv);
 	if (gl_FragCoord.x < 500) {
-		color = TilingAndBlendingVarianceSq(vUv);
+		meanx = TilingAndBlendingMean(vUv).x;
+		meany = TilingAndBlendingMean(vUv).y;
+		varx = TilingAndBlendingVarianceSq(vUv).x;
+		vary = TilingAndBlendingVarianceSq(vUv).y;
 	}
+	covxy = 0;
 	
+	color = colorRamp(getSpecularIntensity(meanx, meany, varx, vary, covxy), 0, 50);
 	
 	FragColor = vec4(color, 1.0);
 }
