@@ -239,16 +239,16 @@ void Renderer3D::SetNormal(const char* path) {
             dataB[0].push_back(bbar[1]);
             dataB[0].push_back(pix[2]);
 
-            dataM[0].push_back(bbar[0] * bbar[0] + (1.0/s));
-            dataM[0].push_back(bbar[1] * bbar[1] + (1.0/s));
+            dataM[0].push_back(bbar[0] * bbar[0]);
+            dataM[0].push_back(bbar[1] * bbar[1]);
             dataM[0].push_back(bbar[0] * bbar[1]);
 
-            dataS[0].push_back((1.0/s));
-            dataS[0].push_back((1.0/s));
+            dataS[0].push_back(0);
+            dataS[0].push_back(0);
             dataS[0].push_back(0);
 
-            dataV[0].push_back((1.0/s));
-            dataV[0].push_back((1.0/s));
+            dataV[0].push_back(0);
+            dataV[0].push_back(0);
             dataV[0].push_back(0);
         }
     }
@@ -299,7 +299,7 @@ void Renderer3D::SetNormal(const char* path) {
 
         printf("%d, %d \n", mw, mh);
 
-        std::vector<float> Sigma(3);
+        std::vector<float> Sigma(3); //Mean covariance matrix
         Sigma[0] = 0.0f;
         Sigma[1] = 0.0f;
         Sigma[2] = 0.0f;
@@ -344,15 +344,15 @@ void Renderer3D::SetNormal(const char* path) {
 
                         v[0] += (pow(dataB[0][uid + 0] - b[0], 2));
                         v[1] += (pow(dataB[0][uid + 1] - b[1], 2));
-                        v[2] += (pow(dataB[0][uid + 2] - b[2], 2));
+                        v[2] += (dataB[0][uid + 0] - b[0]) * (dataB[0][uid + 1] - b[1]);
                     }
                 }
                 v[0] /= pow(footprintSize, 2);
                 v[1] /= pow(footprintSize, 2);
                 v[2] /= pow(footprintSize, 2);
-                v[0] += 1/s;
-                v[1] += 1/s;
-                v[2] += 1/s;
+                //v[0] += 1/s;
+                //v[1] += 1/s;
+                //v[2] += 0;
 
                 dataV[i].push_back(v[0]);
                 dataV[i].push_back(v[1]);
@@ -399,7 +399,6 @@ void Renderer3D::Screenshot (const char* path) {
 void Renderer3D::Draw(ImVec2 size, ImVec4 clearColor, float dt, float t) {
     glBindFramebuffer(GL_FRAMEBUFFER, _FBO); //Bind
     if (_size.x != size.x || _size.y != size.y) {
-        glDeleteTextures(1, &_outputColor);
         _size = size;
         //Create & Attach a texture to it
         glGenTextures(1, &_outputColor);
@@ -407,7 +406,9 @@ void Renderer3D::Draw(ImVec2 size, ImVec4 clearColor, float dt, float t) {
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, _size.x, _size.y, 0,  GL_RGB, GL_UNSIGNED_BYTE, NULL);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);  
-        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, _outputColor, 0);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, _outputColor, 0);  
+        GLenum DrawBuffers[1] = {GL_COLOR_ATTACHMENT0};
+        glDrawBuffers(1, DrawBuffers);
 
         glGenTextures(1, &_outputDepth);
         glBindTexture(GL_TEXTURE_2D, _outputDepth);
@@ -415,6 +416,9 @@ void Renderer3D::Draw(ImVec2 size, ImVec4 clearColor, float dt, float t) {
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, _outputDepth, 0);
+
+        if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+            printf("ERROR::FRAMEBUFFER:: Framebuffer is not complete!\n");
         
         _projectionMatrix = glm::perspective<float>(glm::radians(55.0), _size.x / _size.y, 0.1f, 1000.0f);        
     }
@@ -446,6 +450,8 @@ void Renderer3D::Draw(ImVec2 size, ImVec4 clearColor, float dt, float t) {
     glUniform3f(glGetUniformLocation(_shaderProgram, "cameraPosition"), _cameraPosition->x, _cameraPosition->y, _cameraPosition->z);
     glUniform1f(glGetUniformLocation(_shaderProgram, "DTIME"), dt);
     glUniform1f(glGetUniformLocation(_shaderProgram, "TIME"), t);
+    glUniform1f(glGetUniformLocation(_shaderProgram, "s"), s);
+
 
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, _albedo);

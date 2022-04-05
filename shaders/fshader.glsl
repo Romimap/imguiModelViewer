@@ -22,10 +22,11 @@ uniform vec3 cameraPosition;
 
 uniform float TIME;
 uniform float DTIME;
+const float s = 25;
 
 out vec4 FragColor;
 
-const vec3 lightColor = vec3(1.0, .92, .85) * 2;
+const vec3 lightColor = vec3(1.0, .8, .7) * 2;
 const vec3 ambientColor = vec3(0.3, 0.25, 0.35) * 1;
 
 const float pi = 3.141592;
@@ -58,7 +59,7 @@ vec3 viewDirection () {
 
 //Returns the light direction (surface to light)
 vec3 lightDirection () {
-	return normalize(vec3(0, 1, 5));
+	return normalize(vec3(0, 0.1, 1));
 }
 
 
@@ -197,6 +198,8 @@ float getSpecularIntensity (sampler2D bm, sampler2D mm, int lod) {
 	vec2 hb = hn.xz - b.xy;
 	
 	vec3 sigma = m - vec3(b.x * b.x, b.y * b.y, b.x * b.y);
+	sigma.x += 1.0/s;
+	sigma.y += 1.0/s;
 	float det = sigma.x * sigma.y - sigma.z * sigma.z;
 	
 	float e = (hb.x*hb.x*sigma.y + hb.y*hb.y*sigma.x - 2.0*hb.x*hb.y*sigma.z);
@@ -216,7 +219,7 @@ float getSpecularIntensity (float meanx, float meany, float varx, float vary, fl
 	hn /= hn.y;
 	vec2 hb = hn.xz - vec2(meanx, meany);
 	
-	vec3 sigma = vec3(varx, vary, covxy);
+	vec3 sigma = vec3(varx + (1.0 / s), vary + (1.0 / s), covxy);
 	float det = sigma.x * sigma.y - sigma.z * sigma.z;
 	
 	float e = (hb.x*hb.x*sigma.y + hb.y*hb.y*sigma.x - 2.0*hb.x*hb.y*sigma.z);
@@ -272,18 +275,18 @@ void TriangleGrid(vec2 uv, out float w1, out float w2, out float w3, out ivec2 v
 
 
 // By-Example procedural noise at uv
-vec3 TilingAndBlendingMean(vec2 uv)
+vec3 TilingAndBlending(sampler2D tex, vec2 uv)
 {
 	// Get triangle info
 	float w1, w2, w3;
 	ivec2 vertex1, vertex2, vertex3;
 	TriangleGrid(uv, w1, w2, w3, vertex1, vertex2, vertex3);
 
-	float l = 5;
+	float l = 1;
 
-	float wp1 = pow(w1,l) / (pow(w1,l) + pow(w2,l) + pow(w3,l));
-	float wp2 = pow(w2,l) / (pow(w1,l) + pow(w2,l) + pow(w3,l));
-	float wp3 = pow(w3,l) / (pow(w1,l) + pow(w2,l) + pow(w3,l));
+	float wp1 = w1 / sqrt((pow(w1,2) + pow(w2,2) + pow(w3,2)));
+	float wp2 = w2 / sqrt((pow(w1,2) + pow(w2,2) + pow(w3,2)));
+	float wp3 = w3 / sqrt((pow(w1,2) + pow(w2,2) + pow(w3,2)));
 	
 	// Assign random offset to each triangle vertex
 	vec2 uv1 = uv + hash(vertex1);
@@ -295,19 +298,18 @@ vec3 TilingAndBlendingMean(vec2 uv)
 	vec2 duvdy = dFdy(uv);
 
 	// Fetch Gaussian input
-	vec3 G1 = textureGrad(bmap, uv1, duvdx, duvdy).rgb;
-	vec3 G2 = textureGrad(bmap, uv2, duvdx, duvdy).rgb;
-	vec3 G3 = textureGrad(bmap, uv3, duvdx, duvdy).rgb;
+	vec3 G1 = textureGrad(tex, uv1, duvdx, duvdy).rgb;
+	vec3 G2 = textureGrad(tex, uv2, duvdx, duvdy).rgb;
+	vec3 G3 = textureGrad(tex, uv3, duvdx, duvdy).rgb;
 
 	// Variance-preserving blending
 	vec3 G = wp1*G1 + wp2*G2 + wp3*G3;
+	
 	return G;
 }
 
-
-
 // By-Example procedural noise at uv
-vec3 TilingAndBlendingVariance(vec2 uv)
+vec3 TilingAndBlendingSq(sampler2D tex, vec2 uv)
 {
 	// Get triangle info
 	float w1, w2, w3;
@@ -316,10 +318,10 @@ vec3 TilingAndBlendingVariance(vec2 uv)
 
 	float l = 1;
 
-	float wp1 = pow(w1,l) / (pow(w1,l) + pow(w2,l) + pow(w3,l));
-	float wp2 = pow(w2,l) / (pow(w1,l) + pow(w2,l) + pow(w3,l));
-	float wp3 = pow(w3,l) / (pow(w1,l) + pow(w2,l) + pow(w3,l));
-	
+	float wp1 = w1 / sqrt((pow(w1,2) + pow(w2,2) + pow(w3,2)));
+	float wp2 = w2 / sqrt((pow(w1,2) + pow(w2,2) + pow(w3,2)));
+	float wp3 = w3 / sqrt((pow(w1,2) + pow(w2,2) + pow(w3,2)));
+
 	// Assign random offset to each triangle vertex
 	vec2 uv1 = uv + hash(vertex1);
 	vec2 uv2 = uv + hash(vertex2);
@@ -330,42 +332,9 @@ vec3 TilingAndBlendingVariance(vec2 uv)
 	vec2 duvdy = dFdy(uv);
 
 	// Fetch Gaussian input
-	vec3 G1 = textureGrad(var, uv1, duvdx, duvdy).rgb;
-	vec3 G2 = textureGrad(var, uv2, duvdx, duvdy).rgb;
-	vec3 G3 = textureGrad(var, uv3, duvdx, duvdy).rgb;
-
-	// non Variance-preserving blending
-	vec3 G = wp1*G1 + wp2*G2 + wp3*G3;
-	return G;
-}
-
-// By-Example procedural noise at uv
-vec3 TilingAndBlendingVarianceSq(vec2 uv)
-{
-	// Get triangle info
-	float w1, w2, w3;
-	ivec2 vertex1, vertex2, vertex3;
-	TriangleGrid(uv, w1, w2, w3, vertex1, vertex2, vertex3);
-
-	float l = 1;
-
-	float wp1 = pow(w1,l) / (pow(w1,l) + pow(w2,l) + pow(w3,l));
-	float wp2 = pow(w2,l) / (pow(w1,l) + pow(w2,l) + pow(w3,l));
-	float wp3 = pow(w3,l) / (pow(w1,l) + pow(w2,l) + pow(w3,l));
-	
-	// Assign random offset to each triangle vertex
-	vec2 uv1 = uv + hash(vertex1);
-	vec2 uv2 = uv + hash(vertex2);
-	vec2 uv3 = uv + hash(vertex3);
-
-	// Precompute UV derivatives 
-	vec2 duvdx = dFdx(uv);
-	vec2 duvdy = dFdy(uv);
-
-	// Fetch Gaussian input
-	vec3 G1 = textureGrad(var, uv1, duvdx, duvdy).rgb;
-	vec3 G2 = textureGrad(var, uv2, duvdx, duvdy).rgb;
-	vec3 G3 = textureGrad(var, uv3, duvdx, duvdy).rgb;
+	vec3 G1 = textureGrad(tex, uv1, duvdx, duvdy).rgb;
+	vec3 G2 = textureGrad(tex, uv2, duvdx, duvdy).rgb;
+	vec3 G3 = textureGrad(tex, uv3, duvdx, duvdy).rgb;
 
 	// non Variance-preserving blending
 	vec3 G = pow(wp1, 2)*G1 + pow(wp2, 2)*G2 + pow(wp3, 2)*G3;
@@ -414,6 +383,61 @@ vec3 getSpecular (int lod, float intensity, bool constSigm) {
 	return max(float_Specular * intensity, 0.0) * lightColor;
 }
 
+float SpecularTilingBlending (bool csigma, bool cov0) {
+	vec3 b = TilingAndBlending(bmap, vUv);
+	vec3 v = TilingAndBlendingSq(var, vUv);
+
+	float meanx = b.x;
+	float meany = b.y;
+	float varx = v.x;
+	float vary = v.y;
+	float covxy = v.z;
+
+	if (csigma) {
+		vec3 sigma = texture(constantSigma, vUv).xyz;
+		varx = sigma.x;
+		vary = sigma.y;
+		covxy = sigma.z;
+	}
+
+	if (cov0) {
+		covxy = 0;
+	}
+
+	float float_Specular = getSpecularIntensity(meanx, meany, varx, vary, covxy);
+	
+
+	return float_Specular;
+}
+
+float Specular (bool csigma, bool cov0) {
+	vec2 b = texture(bmap, vUv).xy;
+	vec3 m = texture(mmap, vUv).xyz;
+
+	float meanx = b.x;
+	float meany = b.y;
+	float varx = m.x - (b.x*b.x);
+	float vary = m.y - (b.y*b.y);
+	float covxy = m.z - (b.x*b.y);
+
+	if (csigma) {
+		vec3 sigma = texture(constantSigma, vUv).xyz;
+		varx = sigma.x;
+		vary = sigma.y;
+		covxy = sigma.z;
+	}
+
+	if (cov0) {
+		covxy = 0;
+	}
+
+	
+	float float_Specular =  getSpecularIntensity(meanx, meany, varx, vary, covxy);
+	
+	return float_Specular;
+}
+
+
 
 //Returns the diffuse color.
 vec3 getDiffuse (float bias, int lod) {
@@ -431,6 +455,15 @@ vec3 getDiffuse (float bias, int lod) {
 }
 
 
+vec3 getTilingBlendingDiffuse (float bias) {
+	vec3 color = TilingAndBlending(albedo, vUv);
+	vec3 b = TilingAndBlending(bmap, vUv);
+	vec3 micronormal = normalize(vec3(b.x, -b.y, 1)).xzy;
+	vec3 n = NormalToGlobalSpace(micronormal);
+	return (max(lightColor * (dot(n, lightDirection()) * (1.0 - bias) + bias), 0.0) + ambientColor) * color;
+}
+
+
 vec3 colorManagement (vec3 color, float exposure) {
 	return tanh(color * exposure);
 }
@@ -443,12 +476,18 @@ void main () {
 	int lod = int(mod(TIME, 6));
 	lod = -1; //Auto lod
 	
-	////////// SPECULAR USING A B & M MAP
-	float float_SpecularBM = getSpecularIntensity(bmap, mmap, lod);
-	
-	
-	////////// SPECULAR USING THE MEAN, VARIANCE & COVARIANCE
-	vec3 b;
+	float t = 0.0;
+	t = SpecularTilingBlending(false, false);
+	//t = Specular(false, true); 
+	vec3 color = vec3(tanh(t * 0.1)*1.05);
+
+	FragColor = vec4(color, 1.0);
+}
+
+
+
+
+vec3 b;
 	vec3 m;
 	vec3 s;
 	if (lod == -1) {
@@ -492,15 +531,23 @@ void main () {
 	
 	
 	////////// FRAGMENT COLOR
-	if (gl_FragCoord.x < 500) {
-		meanx = TilingAndBlendingMean(vUv).x;
-		meany = TilingAndBlendingMean(vUv).y;
-		varx = TilingAndBlendingVarianceSq(vUv).x;
-		vary = TilingAndBlendingVarianceSq(vUv).y;
-	}
-	covxy = 0;
-	
-	color = colorRamp(getSpecularIntensity(meanx, meany, varx, vary, covxy), 0, 50);
-	
+
+	float t = 0;
+	if (mod(TIME, 4) < 1)
+		t = SpecularTilingBlending(false, false);
+	else if (mod(TIME, 4) < 2)
+		t = SpecularTilingBlending(false, true);
+	else if (mod(TIME, 4) < 3)
+		t = Specular(false, false);
+	else
+		t = Specular(false, true);
+	t = Specular(false, true);
+	color = vec3(tanh(t * 0.1)*1.05);
+
 	FragColor = vec4(color, 1.0);
 }
+
+
+
+
+

@@ -134,8 +134,8 @@ int main(int, char**)
     cameraPosition = newCamPosition;
     const char* fshaderfilepath = "./shaders/fshader.glsl";
     const char* vshaderfilepath = "./shaders/vshader.glsl";
-    static char albedoPath[256] = "textures/anisonoiseTex.png";
-    static char normalPath[256] = "textures/anisonoiseTex_Normal.png";
+    static char albedoPath[256] = "textures/anisonoiseTile.png";
+    static char normalPath[256] = "textures/anisonoiseTile_Normal.png";
 
     Renderer3D renderer3D(size, cameraPosition, "./models/bigGrid.obj", fshaderfilepath, vshaderfilepath);
 
@@ -420,7 +420,6 @@ int main(int, char**)
             renderer3D.Draw(ImVec2(ImGui::GetWindowSize().x - 16, ImGui::GetWindowSize().y - 16), clear_color, deltaTime, time);
             ImGui::SetCursorPos(ImVec2(20, 20));
             ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
-
             ImGuizmo::SetDrawlist();
 			ImGuizmo::SetRect(ImGui::GetWindowPos().x + ImGui::GetWindowSize().x - 150, ImGui::GetWindowPos().y + 50, 100, 100 * ImGui::GetWindowSize().y / ImGui::GetWindowSize().x);
             ImGuizmo::SetGizmoSizeClipSpace(1);
@@ -431,6 +430,71 @@ int main(int, char**)
             //ImGuizmo::DrawCubes((float*)&renderer3D.getViewMatrix()[0][0], (float*)& renderer3D.getProjectionMatrix()[0][0], (float*)& matrix[0][0], 1);
    
            
+            ImGui::End();
+        }
+
+        {   //CAM CONTROLS
+            ImGui::Begin("Camera Controls", nullptr, 
+             ImGuiWindowFlags_NoTitleBar | 
+             ImGuiWindowFlags_NoDecoration | 
+             ImGuiWindowFlags_NoResize |
+             ImGuiWindowFlags_NoBackground);
+
+
+            ImGui::Text("Camera Position: %.3f, %.3f, %.3f", cameraPosition.x, cameraPosition.y, cameraPosition.z);
+            ImGui::Text("Azimuth: %.3f, Elevation: %.3f, Zoom: %.3f", azimuth, elevation, zoom);
+            if (ImGui::Button("Pos1")) {
+                azimuth = 315;
+                elevation = 45;
+                zoom = 5;
+
+                glm::mat4 rotation(1);
+                rotation = glm::rotate(rotation, azimuth * 0.01f, glm::vec3(0, -1, 0));
+                rotation = glm::rotate(rotation, elevation * 0.01f, glm::vec3(-1, 0, 0));
+                glm::vec4 newCamPosition(0, 0, zoom, 1);
+                newCamPosition = rotation * newCamPosition;
+                cameraPosition = newCamPosition;
+            }
+            ImGui::SameLine();
+            if (ImGui::Button("Pos2")) {
+                azimuth = 315;
+                elevation = 45;
+                zoom = 20;
+
+                glm::mat4 rotation(1);
+                rotation = glm::rotate(rotation, azimuth * 0.01f, glm::vec3(0, -1, 0));
+                rotation = glm::rotate(rotation, elevation * 0.01f, glm::vec3(-1, 0, 0));
+                glm::vec4 newCamPosition(0, 0, zoom, 1);
+                newCamPosition = rotation * newCamPosition;
+                cameraPosition = newCamPosition;
+            }
+            ImGui::SameLine();
+            if (ImGui::Button("Pos3")) {
+                azimuth = 315;
+                elevation = 45;
+                zoom = 100;
+
+                glm::mat4 rotation(1);
+                rotation = glm::rotate(rotation, azimuth * 0.01f, glm::vec3(0, -1, 0));
+                rotation = glm::rotate(rotation, elevation * 0.01f, glm::vec3(-1, 0, 0));
+                glm::vec4 newCamPosition(0, 0, zoom, 1);
+                newCamPosition = rotation * newCamPosition;
+                cameraPosition = newCamPosition;
+            }
+            ImGui::SameLine();
+            if (ImGui::Button("Pos4")) {
+                azimuth = 315;
+                elevation = 90;
+                zoom = 100;
+
+                glm::mat4 rotation(1);
+                rotation = glm::rotate(rotation, azimuth * 0.01f, glm::vec3(0, -1, 0));
+                rotation = glm::rotate(rotation, elevation * 0.01f, glm::vec3(-1, 0, 0));
+                glm::vec4 newCamPosition(0, 0, zoom, 1);
+                newCamPosition = rotation * newCamPosition;
+                cameraPosition = newCamPosition;
+            }
+
             ImGui::End();
         }
 
