@@ -24,6 +24,8 @@ uniform float TIME;
 uniform float DTIME;
 const float s = 25;
 
+const float lod = 1;
+
 out vec4 FragColor;
 
 const vec3 lightColor = vec3(1.0, .8, .7) * 2;
@@ -45,6 +47,15 @@ const mat2 scale = mat2(
 
 /////////// UTILS
 
+vec4 gtexture(sampler2D tex, vec2 uv) {
+	if (lod < 0) {
+		vec2 duvdx = dFdx(uv);
+		vec2 duvdy = dFdy(uv);
+		return textureGrad(tex, uv, duvdx, duvdy);
+	} else {
+		return textureLod(tex, uv, lod);
+	}
+}
 
 //Returns a random vec2 in the range [0, 1]
 vec2 rand2(vec2 seed) {
@@ -87,13 +98,9 @@ vec3 NormalToGlobalSpace(vec3 v) {
 }
 
 
-vec3 getMicroNormal (sampler2D bm, int lod, float intensity = 1) {
-	vec3 b;
-	if (lod == -1) {
-		b = texture(bm, vUv).rgb;
-	} else {
-		b = textureLod(bm, vUv, lod).rgb;
-	}
+vec3 getMicroNormal (sampler2D bm, vec2 uv, float intensity = 1) {
+	vec3 b = gtexture(bm, uv).rgb;
+
 	return normalize(vec3(b.xy / (b.z / intensity), (b.z / intensity)).xzy);
 }
 
@@ -173,41 +180,6 @@ void triangleGrid(vec2 uv,
 
 
 /////////// LEAN MAPPING
-
-
-
-//Returns a specular intensity based on the B map, the M map and a lod.
-// /!\ IMPORTANT NOTE : 
-//     we assume that <bm> and <mm> are filled with floats in the [-1; 1] range.
-float getSpecularIntensity (sampler2D bm, sampler2D mm, int lod) {
-	if (dot(h(), vNormal) < 0) return 0.0; //Prevents specular if h is facing inside
-
-	vec3 b;
-	vec3 m;
-	if (lod == -1) {
-		b = texture(bm, vUv).rgb;
-		m = texture(mm, vUv).rgb;
-	} else {
-		b = textureLod(bm, vUv, lod).rgb;
-		m = textureLod(mm, vUv, lod).rgb;
-	}
-	
-
-	vec3 hn = normalize(GlobalToNormalSpace(h())); //h in a space where hn.y is aligned with the mesh normal
-	hn /= hn.y;
-	vec2 hb = hn.xz - b.xy;
-	
-	vec3 sigma = m - vec3(b.x * b.x, b.y * b.y, b.x * b.y);
-	sigma.x += 1.0/s;
-	sigma.y += 1.0/s;
-	float det = sigma.x * sigma.y - sigma.z * sigma.z;
-	
-	float e = (hb.x*hb.x*sigma.y + hb.y*hb.y*sigma.x - 2.0*hb.x*hb.y*sigma.z);
-	float spec = (det <= 0.0) ? 0.0 : exp(-0.5 * e / det) / sqrt(det);
-	
-	return spec;
-}
-
 
 
 
@@ -293,14 +265,11 @@ vec3 TilingAndBlending(sampler2D tex, vec2 uv)
 	vec2 uv2 = uv + hash(vertex2);
 	vec2 uv3 = uv + hash(vertex3);
 
-	// Precompute UV derivatives 
-	vec2 duvdx = dFdx(uv);
-	vec2 duvdy = dFdy(uv);
-
 	// Fetch Gaussian input
-	vec3 G1 = textureGrad(tex, uv1, duvdx, duvdy).rgb;
-	vec3 G2 = textureGrad(tex, uv2, duvdx, duvdy).rgb;
-	vec3 G3 = textureGrad(tex, uv3, duvdx, duvdy).rgb;
+	vec3 G1 = gtexture(tex, uv1).rgb;
+	vec3 G2 = gtexture(tex, uv2).rgb;
+	vec3 G3 = gtexture(tex, uv3).rgb;
+
 
 	// Variance-preserving blending
 	vec3 G = wp1*G1 + wp2*G2 + wp3*G3;
@@ -327,14 +296,10 @@ vec3 TilingAndBlendingSq(sampler2D tex, vec2 uv)
 	vec2 uv2 = uv + hash(vertex2);
 	vec2 uv3 = uv + hash(vertex3);
 
-	// Precompute UV derivatives 
-	vec2 duvdx = dFdx(uv);
-	vec2 duvdy = dFdy(uv);
-
 	// Fetch Gaussian input
-	vec3 G1 = textureGrad(tex, uv1, duvdx, duvdy).rgb;
-	vec3 G2 = textureGrad(tex, uv2, duvdx, duvdy).rgb;
-	vec3 G3 = textureGrad(tex, uv3, duvdx, duvdy).rgb;
+	vec3 G1 = gtexture(tex, uv1).rgb;
+	vec3 G2 = gtexture(tex, uv2).rgb;
+	vec3 G3 = gtexture(tex, uv3).rgb;
 
 	// non Variance-preserving blending
 	vec3 G = pow(wp1, 2)*G1 + pow(wp2, 2)*G2 + pow(wp3, 2)*G3;
@@ -348,20 +313,11 @@ vec3 TilingAndBlendingSq(sampler2D tex, vec2 uv)
 
 
 //Returns a specular color.
-vec3 getSpecular (int lod, float intensity, bool constSigm) {
-	vec3 b;
-	vec3 m;
-	vec3 s;
+vec3 getSpecular (float intensity, bool constSigm, vec2 uv) {
+	vec3 b = gtexture(bmap, uv).rgb;
+	vec3 m = gtexture(mmap, uv).rgb;
+	vec3 s = gtexture(constantSigma, uv).rgb;
 	
-	if (lod == -1) {
-		b = texture(bmap, vUv).rgb;
-		m = texture(mmap, vUv).rgb;
-		s = texture(constantSigma, vUv).rgb;
-	} else {
-		b = textureLod(bmap, vUv, lod).rgb;
-		m = textureLod(mmap, vUv, lod).rgb;
-		s = textureLod(constantSigma, vUv, lod).rgb;
-	}
 	float meanx = b.x;
 	float meany = b.y;
 	float varx = m.x - pow(b.x, 2);
@@ -374,18 +330,15 @@ vec3 getSpecular (int lod, float intensity, bool constSigm) {
 		covxy = s.z;
 	}
 	
-	//covxy = s.z;
-	
-	//covxy = 0; //If covariance is a pain to compute, you might want to set it to 0. Thats a strong simplification but can work.
 	float float_Specular = getSpecularIntensity(meanx, meany, varx, vary, covxy);
 	
 
 	return max(float_Specular * intensity, 0.0) * lightColor;
 }
 
-float SpecularTilingBlending (bool csigma, bool cov0) {
-	vec3 b = TilingAndBlending(bmap, vUv);
-	vec3 v = TilingAndBlendingSq(var, vUv);
+float SpecularTilingBlending (bool csigma, bool cov0, vec2 uv) {
+	vec3 b = TilingAndBlending(bmap, uv);
+	vec3 v = TilingAndBlendingSq(var, uv);
 
 	float meanx = b.x;
 	float meany = b.y;
@@ -394,7 +347,7 @@ float SpecularTilingBlending (bool csigma, bool cov0) {
 	float covxy = v.z;
 
 	if (csigma) {
-		vec3 sigma = texture(constantSigma, vUv).xyz;
+		vec3 sigma = gtexture(constantSigma, uv).xyz;
 		varx = sigma.x;
 		vary = sigma.y;
 		covxy = sigma.z;
@@ -410,9 +363,9 @@ float SpecularTilingBlending (bool csigma, bool cov0) {
 	return float_Specular;
 }
 
-float Specular (bool csigma, bool cov0) {
-	vec2 b = texture(bmap, vUv).xy;
-	vec3 m = texture(mmap, vUv).xyz;
+float Specular (bool csigma, bool cov0, vec2 uv) {
+	vec2 b = gtexture(bmap, uv).xy;
+	vec3 m = gtexture(mmap, uv).xyz;
 
 	float meanx = b.x;
 	float meany = b.y;
@@ -421,7 +374,7 @@ float Specular (bool csigma, bool cov0) {
 	float covxy = m.z - (b.x*b.y);
 
 	if (csigma) {
-		vec3 sigma = texture(constantSigma, vUv).xyz;
+		vec3 sigma = gtexture(constantSigma, uv).xyz;
 		varx = sigma.x;
 		vary = sigma.y;
 		covxy = sigma.z;
@@ -440,24 +393,19 @@ float Specular (bool csigma, bool cov0) {
 
 
 //Returns the diffuse color.
-vec3 getDiffuse (float bias, int lod) {
-	vec3 color;
-	if (lod == -1) {
-		color = texture(albedo, vUv).rgb;
-	} else {
-		color = textureLod(albedo, vUv, lod).rgb;
-	}
+vec3 getDiffuse (float bias, int lod, vec2 uv) {
+	vec3 color = gtexture(albedo, uv).rgb;
 	
 	//Reduce normal map force
-	vec3 micronormal = getMicroNormal(bmap, lod);
+	vec3 micronormal = getMicroNormal(bmap, uv);
 	vec3 n = NormalToGlobalSpace(micronormal);
 	return (max(lightColor * (dot(n, lightDirection()) * (1.0 - bias) + bias), 0.0) + ambientColor) * color;
 }
 
 
-vec3 getTilingBlendingDiffuse (float bias) {
-	vec3 color = TilingAndBlending(albedo, vUv);
-	vec3 b = TilingAndBlending(bmap, vUv);
+vec3 getTilingBlendingDiffuse (float bias, vec2 uv) {
+	vec3 color = TilingAndBlending(albedo, uv);
+	vec3 b = TilingAndBlending(bmap, uv);
 	vec3 micronormal = normalize(vec3(b.x, -b.y, 1)).xzy;
 	vec3 n = NormalToGlobalSpace(micronormal);
 	return (max(lightColor * (dot(n, lightDirection()) * (1.0 - bias) + bias), 0.0) + ambientColor) * color;
@@ -476,78 +424,36 @@ void main () {
 	int lod = int(mod(TIME, 6));
 	lod = -1; //Auto lod
 	
-	float t = 0.0;
-	t = SpecularTilingBlending(false, false);
-	//t = Specular(false, true); 
-	vec3 color = vec3(tanh(t * 0.1)*1.05);
-
-	FragColor = vec4(color, 1.0);
-}
-
-
-
-
-vec3 b;
-	vec3 m;
-	vec3 s;
-	if (lod == -1) {
-		b = texture(bmap, vUv).rgb;
-		m = texture(mmap, vUv).rgb;
-		s = texture(constantSigma, vUv).rgb;
-	} else {
-		b = textureLod(bmap, vUv, lod).rgb;
-		m = textureLod(mmap, vUv, lod).rgb;
-		s = textureLod(constantSigma, vUv, lod).rgb;
+	int samplesq = 16;
+	
+	vec2 duvdx = dFdx(vUv);
+	vec2 duvdy = dFdy(vUv);
+	
+	float mean = 0;
+	
+	for (int x = 0; x < samplesq; x++) {
+		for (int y = 0; y < samplesq; y++) {
+			vec2 uv = vUv;
+			uv -= (duvdx/2.0);
+			uv -= (duvdy/2.0);
+			uv += (x + 0.5) * (1.0 / samplesq) * duvdx;
+			uv += (y + 0.5) * (1.0 / samplesq) * duvdy;
+			
+			mean += SpecularTilingBlending(false, false, uv);
+		}
 	}
-	float meanx = b.x;
-	float meany = b.y;
-	float varx = m.x - pow(b.x, 2);
-	float vary = m.y - pow(b.y, 2);
-	float covxy = m.z - b.x * b.y;
-	//covxy = 0; //If covariance is a pain to compute, you might want to set it to 0. Thats a strong simplification but can work.
-	float float_SpecularCovariance = getSpecularIntensity(meanx, meany, varx, vary, covxy);
+	mean /= float(samplesq*samplesq);
 	
+	float t = 0.0;
+	//t = SpecularTilingBlending(false, false, vUv);
+	//t = Specular(false, true, vUv); 
 	
-	////////// EYE CANDY
-	vec3 color_EyeCandy = getSpecular(lod, 0.01, false) + getDiffuse(0.05, lod);
-	
-	////////// COLOR MANAGEMENT
-	vec3 color = color_EyeCandy;//Set that variable to color_EyeCandy, color_SpecularCovariance or color_SpecularBM.
-	float exposure = 0.5;
-	color = colorManagement(color, exposure);
-	
-	
-	///////// COLOR RAMP
-	//{
-	//	float t;
-	//	t = getSpecularIntensity(meanx, meany, varx, vary, covxy);
-	//	color = colorRamp(t, 0, 100);
-	//}
-	
+	t = mean;
+	vec3 color = vec3(tanh(t*0.1)*1.05);
 
-	////////// MIP CHART
-	//if (gl_FragCoord.x > 498 && gl_FragCoord.x < 502)
-	//color = texture(mipchart, vUv).rgb;
-	
-	
-	////////// FRAGMENT COLOR
-
-	float t = 0;
-	if (mod(TIME, 4) < 1)
-		t = SpecularTilingBlending(false, false);
-	else if (mod(TIME, 4) < 2)
-		t = SpecularTilingBlending(false, true);
-	else if (mod(TIME, 4) < 3)
-		t = Specular(false, false);
-	else
-		t = Specular(false, true);
-	t = Specular(false, true);
-	color = vec3(tanh(t * 0.1)*1.05);
-
+	//color = texture(albedo, vUv).rgb;
 	FragColor = vec4(color, 1.0);
 }
-
-
 
 
 
