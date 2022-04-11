@@ -444,9 +444,9 @@ int main(int, char**)
             ImGui::Text("Camera Position: %.3f, %.3f, %.3f", cameraPosition.x, cameraPosition.y, cameraPosition.z);
             ImGui::Text("Azimuth: %.3f, Elevation: %.3f, Zoom: %.3f", azimuth, elevation, zoom);
             if (ImGui::Button("Pos1")) {
-                azimuth = 315;
-                elevation = 45;
-                zoom = 5;
+                azimuth = 312;
+                elevation = 27;
+                zoom = 1.2;
 
                 glm::mat4 rotation(1);
                 rotation = glm::rotate(rotation, azimuth * 0.01f, glm::vec3(0, -1, 0));
@@ -457,9 +457,9 @@ int main(int, char**)
             }
             ImGui::SameLine();
             if (ImGui::Button("Pos2")) {
-                azimuth = 315;
-                elevation = 45;
-                zoom = 20;
+                azimuth = 309;
+                elevation = 27;
+                zoom = 8.3;
 
                 glm::mat4 rotation(1);
                 rotation = glm::rotate(rotation, azimuth * 0.01f, glm::vec3(0, -1, 0));
@@ -470,9 +470,9 @@ int main(int, char**)
             }
             ImGui::SameLine();
             if (ImGui::Button("Pos3")) {
-                azimuth = 315;
-                elevation = 45;
-                zoom = 100;
+                azimuth = 316;
+                elevation = 40;
+                zoom = 13;
 
                 glm::mat4 rotation(1);
                 rotation = glm::rotate(rotation, azimuth * 0.01f, glm::vec3(0, -1, 0));
@@ -483,9 +483,9 @@ int main(int, char**)
             }
             ImGui::SameLine();
             if (ImGui::Button("Pos4")) {
-                azimuth = 315;
-                elevation = 90;
-                zoom = 100;
+                azimuth = 326;
+                elevation = 62;
+                zoom = 27;
 
                 glm::mat4 rotation(1);
                 rotation = glm::rotate(rotation, azimuth * 0.01f, glm::vec3(0, -1, 0));

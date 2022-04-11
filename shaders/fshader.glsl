@@ -22,14 +22,14 @@ uniform vec3 cameraPosition;
 
 uniform float TIME;
 uniform float DTIME;
-const float s = 25;
 
-const float lod = 1;
+const float s = 25; //25
+const float lod = -1;
 
 out vec4 FragColor;
 
 const vec3 lightColor = vec3(1.0, .8, .7) * 2;
-const vec3 ambientColor = vec3(0.3, 0.25, 0.35) * 1;
+const vec3 ambientColor = vec3(0.1, 0.25, 0.35) * 1;
 
 const float pi = 3.141592;
 
@@ -49,8 +49,8 @@ const mat2 scale = mat2(
 
 vec4 gtexture(sampler2D tex, vec2 uv) {
 	if (lod < 0) {
-		vec2 duvdx = dFdx(uv);
-		vec2 duvdy = dFdy(uv);
+		vec2 duvdx = dFdx(vUv);
+		vec2 duvdy = dFdy(vUv);
 		return textureGrad(tex, uv, duvdx, duvdy);
 	} else {
 		return textureLod(tex, uv, lod);
@@ -70,7 +70,7 @@ vec3 viewDirection () {
 
 //Returns the light direction (surface to light)
 vec3 lightDirection () {
-	return normalize(vec3(0, 0.1, 1));
+	return normalize(vec3(0, 0.1, 1)); //0 0.1 1
 }
 
 
@@ -403,8 +403,7 @@ vec3 getDiffuse (float bias, int lod, vec2 uv) {
 }
 
 
-vec3 getTilingBlendingDiffuse (float bias, vec2 uv) {
-	vec3 color = TilingAndBlending(albedo, uv);
+vec3 getTilingBlendingDiffuse (vec3 color, float bias, vec2 uv) {
 	vec3 b = TilingAndBlending(bmap, uv);
 	vec3 micronormal = normalize(vec3(b.x, -b.y, 1)).xzy;
 	vec3 n = NormalToGlobalSpace(micronormal);
@@ -417,14 +416,8 @@ vec3 colorManagement (vec3 color, float exposure) {
 }
 
 
-
-/////////// MAIN
-
-void main () {
-	int lod = int(mod(TIME, 6));
-	lod = -1; //Auto lod
-	
-	int samplesq = 16;
+float groundTruth (int n) {
+	float samplesq = n;
 	
 	vec2 duvdx = dFdx(vUv);
 	vec2 duvdy = dFdy(vUv);
@@ -444,16 +437,75 @@ void main () {
 	}
 	mean /= float(samplesq*samplesq);
 	
+	return mean;
+}
+
+vec3 groundTruthDiffuse (int n) {
+	int samplesq = n;
+	
+	vec2 duvdx = dFdx(vUv);
+	vec2 duvdy = dFdy(vUv);
+	
+	vec3 mean = vec3(0);
+	
+	for (int x = 0; x < samplesq; x++) {
+		for (int y = 0; y < samplesq; y++) {
+			vec2 uv = vUv;
+			uv -= (duvdx/2.0);
+			uv -= (duvdy/2.0);
+			uv += (x + 0.5) * (1.0 / samplesq) * duvdx;
+			uv += (y + 0.5) * (1.0 / samplesq) * duvdy;
+			
+			mean += getTilingBlendingDiffuse(vec3(0.2, 0.3, 0.5) * 0.75, 0.5, uv);
+		}
+	}
+	mean /= float(samplesq*samplesq);
+	
+	return mean;
+}
+
+/////////// MAIN
+
+void main () {
+	vec2 uv = vUv + vec2(0, 0);
 	float t = 0.0;
-	//t = SpecularTilingBlending(false, false, vUv);
+	t = SpecularTilingBlending(false, false, uv);
 	//t = Specular(false, true, vUv); 
 	
-	t = mean;
-	vec3 color = vec3(tanh(t*0.1)*1.05);
+	int n = 4;
+	
+	//t = groundTruth(n);
+	
+	vec3 diffuse = getTilingBlendingDiffuse(vec3(0.2, 0.3, 0.5) * 0.75, 0.5, uv); //0.2 0.3 0.5
+	
+	//diffuse = groundTruthDiffuse(n);
+	
+	vec3 color = vec3(tanh(t*0.04)*1.05) + diffuse;
 
 	//color = texture(albedo, vUv).rgb;
 	FragColor = vec4(color, 1.0);
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
