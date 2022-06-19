@@ -17,6 +17,7 @@
 #include "TextEditor.h"
 #include <iostream>
 #include <sstream>
+#include "ImGuizmo/ImGuizmo.h"
 
 
 // [Win32] Our example includes a copy of glfw3.lib pre-compiled with VS2010 to maximize ease of testing and compatibility with old VS compilers.
@@ -65,7 +66,7 @@ int main(int, char**)
 #endif
 
     // Create window with graphics context
-    GLFWwindow* window = glfwCreateWindow(1280, 720, "Dear ImGui GLFW+OpenGL3 example", NULL, NULL);
+    GLFWwindow* window = glfwCreateWindow(1280, 720, "Dear ImGui Shader Editor", NULL, NULL);
     if (window == NULL)
         return 1;
     glfwMakeContextCurrent(window);
@@ -131,7 +132,15 @@ int main(int, char**)
     newCamPosition = rotation * newCamPosition;
     glm::vec3 cameraPosition;
     cameraPosition = newCamPosition;
-    Renderer3D renderer3D(size, cameraPosition, "./models/plane.obj");
+    const char* fshaderfilepath = "./shaders/fshader.glsl";
+    const char* vshaderfilepath = "./shaders/vshader.glsl";
+    static char albedoPath[256] = "textures/anisonoiseTile.png";
+    static char normalPath[256] = "textures/anisonoiseTile_Normal.png";
+
+    Renderer3D renderer3D(size, cameraPosition, "./models/bigGrid.obj", fshaderfilepath, vshaderfilepath);
+
+    renderer3D.SetAlbedo(albedoPath);
+    renderer3D.SetNormal(normalPath);
 
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_CULL_FACE);
@@ -191,7 +200,7 @@ int main(int, char**)
 		lang.mIdentifiers.insert(std::make_pair(std::string(identifiers[i]), id));
 	}
 
-    static const char* keywords[] = {
+    const char* keywords[] = {
         "vec2",
         "vec3",
         "vec4",
@@ -199,7 +208,7 @@ int main(int, char**)
         "sampler2D"
      };
 
-    for (int i = 0; i < sizeof(keywords); ++i) {
+    for (int i = 0; i < 5; ++i) {
 		lang.mKeywords.insert(std::string(keywords[i]));
 	}
 
@@ -207,7 +216,6 @@ int main(int, char**)
     //TEXT EDITORS OBJECTS
     TextEditor editorFShader;
 	editorFShader.SetLanguageDefinition(lang);
-    static const char* fshaderfilepath = "./shaders/fshader.glsl";
     std::fstream fShaderFile(fshaderfilepath);
     std::stringstream ffilestream;
     ffilestream << fShaderFile.rdbuf();
@@ -223,7 +231,6 @@ int main(int, char**)
 
     TextEditor editorVShader;
 	editorVShader.SetLanguageDefinition(lang);
-    static const char* vshaderfilepath = "./shaders/vshader.glsl";
     std::fstream vShaderFile(vshaderfilepath);
     std::stringstream vfilestream;
     vfilestream << vShaderFile.rdbuf();
@@ -253,6 +260,8 @@ int main(int, char**)
     float time = 0;
     float deltaTime = 0;
 
+    glEnable(GL_DEPTH_TEST);
+
     // Main loop
     while (!glfwWindowShouldClose(window))
     {
@@ -271,6 +280,8 @@ int main(int, char**)
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
+        ImGuizmo::BeginFrame();
+        ImGuizmo::Enable(true);
 
         
 
@@ -291,7 +302,7 @@ int main(int, char**)
                 if (error.compare("") != 0) {
                     int a, line, c;
                     char message[1024];
-                    sscanf(error.c_str(), "%d:%d(%d):%[^\n]", &a, &line, &c, &message);
+                    sscanf(error.c_str(), "%d(%d) : %[^\n]", &a, &line, &message);
                     std::string strmsg(message);
                     fsmarkers.insert(std::make_pair<int, std::string>((int)line, (std::string)strmsg));
                     printf("AFTER\n");
@@ -330,7 +341,7 @@ int main(int, char**)
                 if (error.compare("") != 0) {
                     int a, line, c;
                     char message[1024];
-                    sscanf(error.c_str(), "%d:%d(%d):%[^\n]", &a, &line, &c, &message);
+                    sscanf(error.c_str(), "%d(%d) : %[^\n]", &a, &line, &message);
                     std::string strmsg(message);
                     vsmarkers.insert(std::make_pair<int, std::string>((int)line, (std::string)strmsg));
                     printf("AFTER\n");
@@ -409,7 +420,104 @@ int main(int, char**)
             renderer3D.Draw(ImVec2(ImGui::GetWindowSize().x - 16, ImGui::GetWindowSize().y - 16), clear_color, deltaTime, time);
             ImGui::SetCursorPos(ImVec2(20, 20));
             ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
-            
+            ImGuizmo::SetDrawlist();
+			ImGuizmo::SetRect(ImGui::GetWindowPos().x + ImGui::GetWindowSize().x - 150, ImGui::GetWindowPos().y + 50, 100, 100 * ImGui::GetWindowSize().y / ImGui::GetWindowSize().x);
+            ImGuizmo::SetGizmoSizeClipSpace(1);
+            ImGuizmo::SetOrthographic(true);
+
+            const glm::mat4 matrix(1);
+            ImGuizmo::Manipulate((float*)&renderer3D.getViewMatrix()[0][0], (float*)& renderer3D.getProjectionMatrix()[0][0], ImGuizmo::OPERATION::TRANSLATE, ImGuizmo::MODE::WORLD, (float*)& matrix[0][0]);
+            //ImGuizmo::DrawCubes((float*)&renderer3D.getViewMatrix()[0][0], (float*)& renderer3D.getProjectionMatrix()[0][0], (float*)& matrix[0][0], 1);
+   
+           
+            ImGui::End();
+        }
+
+        {   //CAM CONTROLS
+            ImGui::Begin("Camera Controls", nullptr, 
+             ImGuiWindowFlags_NoTitleBar | 
+             ImGuiWindowFlags_NoDecoration | 
+             ImGuiWindowFlags_NoResize |
+             ImGuiWindowFlags_NoBackground);
+
+
+            ImGui::Text("Camera Position: %.3f, %.3f, %.3f", cameraPosition.x, cameraPosition.y, cameraPosition.z);
+            ImGui::Text("Azimuth: %.3f, Elevation: %.3f, Zoom: %.3f", azimuth, elevation, zoom);
+            if (ImGui::Button("Pos1")) {
+                azimuth = 312;
+                elevation = 27;
+                zoom = 1.2;
+
+                glm::mat4 rotation(1);
+                rotation = glm::rotate(rotation, azimuth * 0.01f, glm::vec3(0, -1, 0));
+                rotation = glm::rotate(rotation, elevation * 0.01f, glm::vec3(-1, 0, 0));
+                glm::vec4 newCamPosition(0, 0, zoom, 1);
+                newCamPosition = rotation * newCamPosition;
+                cameraPosition = newCamPosition;
+            }
+            ImGui::SameLine();
+            if (ImGui::Button("Pos2")) {
+                azimuth = 309;
+                elevation = 27;
+                zoom = 8.3;
+
+                glm::mat4 rotation(1);
+                rotation = glm::rotate(rotation, azimuth * 0.01f, glm::vec3(0, -1, 0));
+                rotation = glm::rotate(rotation, elevation * 0.01f, glm::vec3(-1, 0, 0));
+                glm::vec4 newCamPosition(0, 0, zoom, 1);
+                newCamPosition = rotation * newCamPosition;
+                cameraPosition = newCamPosition;
+            }
+            ImGui::SameLine();
+            if (ImGui::Button("Pos3")) {
+                azimuth = 316;
+                elevation = 40;
+                zoom = 13;
+
+                glm::mat4 rotation(1);
+                rotation = glm::rotate(rotation, azimuth * 0.01f, glm::vec3(0, -1, 0));
+                rotation = glm::rotate(rotation, elevation * 0.01f, glm::vec3(-1, 0, 0));
+                glm::vec4 newCamPosition(0, 0, zoom, 1);
+                newCamPosition = rotation * newCamPosition;
+                cameraPosition = newCamPosition;
+            }
+            ImGui::SameLine();
+            if (ImGui::Button("Pos4")) {
+                azimuth = 326;
+                elevation = 62;
+                zoom = 27;
+
+                glm::mat4 rotation(1);
+                rotation = glm::rotate(rotation, azimuth * 0.01f, glm::vec3(0, -1, 0));
+                rotation = glm::rotate(rotation, elevation * 0.01f, glm::vec3(-1, 0, 0));
+                glm::vec4 newCamPosition(0, 0, zoom, 1);
+                newCamPosition = rotation * newCamPosition;
+                cameraPosition = newCamPosition;
+            }
+
+            ImGui::End();
+        }
+
+        {//DEMO
+            ImGui::ShowDemoWindow();
+        }
+
+        {
+            ImGui::Begin("Set Path");
+
+            if (ImGui::InputText("Albedo path", albedoPath, 256, ImGuiInputTextFlags_EnterReturnsTrue)) {
+                renderer3D.SetAlbedo(albedoPath);
+            }
+
+            if (ImGui::InputText("Normap path", normalPath, 256, ImGuiInputTextFlags_EnterReturnsTrue)) {
+                renderer3D.SetNormal(normalPath);
+            }
+
+            static char screenPath[256] = "screenshots/screen.bmp";
+            if (ImGui::InputText("Screenshot", screenPath, 256, ImGuiInputTextFlags_EnterReturnsTrue)) {
+                renderer3D.Screenshot(screenPath);
+            }
+
             ImGui::End();
         }
 
