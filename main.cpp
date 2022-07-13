@@ -134,12 +134,14 @@ int main(int, char**)
     cameraPosition = newCamPosition;
     const char* fshaderfilepath = "./shaders/fshader.glsl";
     const char* vshaderfilepath = "./shaders/vshader.glsl";
-    static char albedoPath[256] = "textures/anisonoiseTile.png";
-    static char normalPath[256] = "textures/anisonoiseTile_Normal.png";
+    static char albedoPath[256] = "textures/asphalt_Color.png";
+    static char rougnessPath[256] = "textures/asphalt_Roughness.png";
+    static char normalPath[256] = "textures/asphalt_Normal.png";
 
-    Renderer3D renderer3D(size, cameraPosition, "./models/bigGrid.obj", fshaderfilepath, vshaderfilepath);
+    Renderer3D renderer3D(size, cameraPosition, "./models/splane.obj", fshaderfilepath, vshaderfilepath);
 
     renderer3D.SetAlbedo(albedoPath);
+    renderer3D.SetRoughness(rougnessPath);
     renderer3D.SetNormal(normalPath);
 
     glEnable(GL_DEPTH_TEST);
@@ -307,7 +309,7 @@ int main(int, char**)
                     fsmarkers.insert(std::make_pair<int, std::string>((int)line, (std::string)strmsg));
                     printf("AFTER\n");
                 } else {
-                    fShaderFile.open(fshaderfilepath);
+                    fShaderFile.open(fshaderfilepath, std::ofstream::out | std::ofstream::trunc);
                     fShaderFile << editorFShader.GetText();
                     fShaderFile.close();
                 }
@@ -346,7 +348,7 @@ int main(int, char**)
                     vsmarkers.insert(std::make_pair<int, std::string>((int)line, (std::string)strmsg));
                     printf("AFTER\n");
                 } else {
-                    vShaderFile.open(vshaderfilepath);
+                    vShaderFile.open(vshaderfilepath, std::ofstream::out | std::ofstream::trunc);
                     vShaderFile << editorVShader.GetText();
                     vShaderFile.close();
                 }
@@ -444,8 +446,8 @@ int main(int, char**)
             ImGui::Text("Camera Position: %.3f, %.3f, %.3f", cameraPosition.x, cameraPosition.y, cameraPosition.z);
             ImGui::Text("Azimuth: %.3f, Elevation: %.3f, Zoom: %.3f", azimuth, elevation, zoom);
             if (ImGui::Button("Pos1")) {
-                azimuth = 312;
-                elevation = 27;
+                azimuth = 157;
+                elevation = 10;
                 zoom = 1.2;
 
                 glm::mat4 rotation(1);
@@ -483,9 +485,9 @@ int main(int, char**)
             }
             ImGui::SameLine();
             if (ImGui::Button("Pos4")) {
-                azimuth = 326;
-                elevation = 62;
-                zoom = 27;
+                azimuth = 314;
+                elevation = 45;
+                zoom = 6.7;
 
                 glm::mat4 rotation(1);
                 rotation = glm::rotate(rotation, azimuth * 0.01f, glm::vec3(0, -1, 0));
@@ -507,6 +509,10 @@ int main(int, char**)
 
             if (ImGui::InputText("Albedo path", albedoPath, 256, ImGuiInputTextFlags_EnterReturnsTrue)) {
                 renderer3D.SetAlbedo(albedoPath);
+            }
+
+            if (ImGui::InputText("Roughness path", rougnessPath, 256, ImGuiInputTextFlags_EnterReturnsTrue)) {
+                renderer3D.SetRoughness(rougnessPath);
             }
 
             if (ImGui::InputText("Normap path", normalPath, 256, ImGuiInputTextFlags_EnterReturnsTrue)) {

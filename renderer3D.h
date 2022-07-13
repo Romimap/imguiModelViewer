@@ -48,6 +48,7 @@ private:
     GLuint _constantSigma = 0;
     GLuint _var = 0;
     GLuint _mipchart = 0;
+    GLuint _skybox = 0;
 
     glm::mat4x4 _projectionMatrix;
     glm::mat4x4 _viewMatrix;
@@ -71,6 +72,7 @@ public:
     std::string SetVShader(const std::string &code);
 
     void SetAlbedo(const char* path);
+    void SetRoughness(const char* path);
     void SetNormal(const char* path);
 
     glm::mat4 getProjectionMatrix() {return _projectionMatrix;}
@@ -124,7 +126,7 @@ Renderer3D::Renderer3D(ImVec2 size, glm::vec3 &cameraPosition, const char* model
         glGenTextures(1, &_roughness);
         glBindTexture(GL_TEXTURE_2D, _roughness);
         int w, h, nbC;
-        unsigned char *data = stbi_load("textures/Gravel_Roughness.png", &w, &h, &nbC, 0); 
+        unsigned char *data = stbi_load("textures/asphalt_Roughness.png", &w, &h, &nbC, 0); 
         glTexStorage2D(GL_TEXTURE_2D, mip_levels, GL_R8, w, h);
         glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, w, h, GL_R, GL_UNSIGNED_BYTE, data);
         glGenerateMipmap(GL_TEXTURE_2D);
@@ -177,6 +179,29 @@ Renderer3D::Renderer3D(ImVec2 size, glm::vec3 &cameraPosition, const char* model
         glTexImage2D(GL_TEXTURE_2D, 7, GL_RGB8, 2  , 2  , 0, GL_RGB, GL_UNSIGNED_BYTE, mip7);
         glTexImage2D(GL_TEXTURE_2D, 8, GL_RGB8, 1  , 1  , 0, GL_RGB, GL_UNSIGNED_BYTE, mip0);
     }
+    { // CUBE MAP
+        glGenTextures(1, &_skybox);
+        glBindTexture(GL_TEXTURE_CUBE_MAP, _skybox);
+        int w, h, nbC;
+        unsigned char *data = stbi_load("textures/skybox/posx.png", &w, &h, &nbC, 0);
+        glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X, 0, GL_RGB8, w, h, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+        data = stbi_load("textures/skybox/negx.png", &w, &h, &nbC, 0);
+        glTexImage2D(GL_TEXTURE_CUBE_MAP_NEGATIVE_X, 0, GL_RGB8, w, h, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+        data = stbi_load("textures/skybox/posy.png", &w, &h, &nbC, 0);
+        glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_Y, 0, GL_RGB8, w, h, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+        data = stbi_load("textures/skybox/negy.png", &w, &h, &nbC, 0);
+        glTexImage2D(GL_TEXTURE_CUBE_MAP_NEGATIVE_Y, 0, GL_RGB8, w, h, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+        data = stbi_load("textures/skybox/posz.png", &w, &h, &nbC, 0);
+        glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_Z, 0, GL_RGB8, w, h, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+        data = stbi_load("textures/skybox/negz.png", &w, &h, &nbC, 0);
+        glTexImage2D(GL_TEXTURE_CUBE_MAP_NEGATIVE_Z, 0, GL_RGB8, w, h, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+        glGenerateMipmap(GL_TEXTURE_CUBE_MAP);
+    }
 
 
     //Back to the default frame buffer
@@ -192,6 +217,22 @@ Renderer3D::~Renderer3D() {
 void Renderer3D::SetAlbedo(const char* path) {
     glGenTextures(1, &_albedo);
     glBindTexture(GL_TEXTURE_2D, _albedo);
+    int w, h, nbC;
+    unsigned char *data = stbi_load(path, &w, &h, &nbC, 0);
+    glTexStorage2D(GL_TEXTURE_2D, mip_levels, GL_RGB8, w, h);
+    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, w, h, GL_RGB, GL_UNSIGNED_BYTE, data);
+    glGenerateMipmap(GL_TEXTURE_2D);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_NEAREST);
+    glTexParameterf(GL_TEXTURE_2D, GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, max_aniso);
+}
+
+
+void Renderer3D::SetRoughness(const char* path) {
+    glGenTextures(1, &_roughness);
+    glBindTexture(GL_TEXTURE_2D, _roughness);
     int w, h, nbC;
     unsigned char *data = stbi_load(path, &w, &h, &nbC, 0);
     glTexStorage2D(GL_TEXTURE_2D, mip_levels, GL_RGB8, w, h);
@@ -223,8 +264,8 @@ void Renderer3D::SetNormal(const char* path) {
     std::vector<std::vector<float>> dataS(64, std::vector<float>(0));
     std::vector<std::vector<float>> dataV(64, std::vector<float>(0));
 
-    for (int x = 0; x < w; x++) {
         for (int y = 0; y < h; y++) {
+    for (int x = 0; x < w; x++) {
             int pixelId = nbC * x + nbC * w * y;
             std::vector<float> pix(3);
             pix[0] = ((double)data[pixelId + 0] / 255.0) * 2.0 - 1.0; //Normal.x from [0;255] to [-1.0;1.0]
@@ -477,6 +518,9 @@ void Renderer3D::Draw(ImVec2 size, ImVec4 clearColor, float dt, float t) {
     glActiveTexture(GL_TEXTURE7);
     glBindTexture(GL_TEXTURE_2D, _var);
     glUniform1i(glGetUniformLocation(_shaderProgram, "var"), 7);
+    glActiveTexture(GL_TEXTURE8);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, _skybox);
+    glUniform1i(glGetUniformLocation(_shaderProgram, "skybox"), 8);
 
     glDrawArrays(GL_TRIANGLES, 0, _vertices.size());
 
