@@ -134,9 +134,9 @@ int main(int, char**)
     cameraPosition = newCamPosition;
     const char* fshaderfilepath = "./shaders/fshader.glsl";
     const char* vshaderfilepath = "./shaders/vshader.glsl";
-    static char albedoPath[256] = "textures/asphalt_Color.png";
+    static char albedoPath[256] = "textures/anisonoiseTile.png";
     static char rougnessPath[256] = "textures/asphalt_Roughness.png";
-    static char normalPath[256] = "textures/asphalt_Normal.png";
+    static char normalPath[256] = "textures/anisonoiseTile_Normal.png";
 
     Renderer3D renderer3D(size, cameraPosition, "./models/splane.obj", fshaderfilepath, vshaderfilepath);
 

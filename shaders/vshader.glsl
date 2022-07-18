@@ -22,11 +22,12 @@ void main () {
     gl_Position = projectionMatrix * viewMatrix * modelMatrix * vec4(iPosition, 1.0);
 
     vPosition = iPosition;
-    vUv = iUv*10 + (vec2(0.1, 0) * sin(TIME));
+    vUv = iUv*10;// + (vec2(0.2, 0) * sin(TIME/2.0) + vec2(0, 0.2) * cos(TIME/2.0));
     vNormal = iNormal;
     vTangent = iTangent;
     vBitangent = iBitangent;
 }
+
 
 
 

@@ -65,7 +65,7 @@ vec3 viewDirection () {
 
 //Returns the light direction (surface to light)
 vec3 lightDirection () {
-	return normalize(vec3(1,.5,-1)); //0 0.1 1
+	return normalize(vec3(1,.5, 0)); //0 0.1 1
 }
 
 
@@ -76,7 +76,7 @@ vec3 h() {
 
 
 mat3 tangentTransformMatrix () {
- return mat3(cross(vTangent, vNormal), -vNormal, vTangent);
+ return mat3(vTangent, vNormal, cross(vTangent, vNormal));
 }
 
 //Transforms a vector from World to Normal Space
@@ -148,7 +148,7 @@ float getSpecular (float meanx, float meany, float varx, float vary, float covxy
 
 float getDiffuse(float meanx, float meany) {
 	vec3 nrm = normalize(vec3(meanx, 1, meany));
-	vec3 snrm = normalize(normalToGlobalSpace(-nrm)); //h in a space where hn.y is aligned with the mesh normal
+	vec3 snrm = normalize(normalToGlobalSpace(nrm)); //h in a space where hn.y is aligned with the mesh normal
 	
 	return max(0, dot(lightDirection(), snrm));
 }
@@ -210,9 +210,9 @@ vec4 TilingAndBlending(sampler2D tex, vec2 uv, float lod, int fetch)
 	float l = 1;
 
 	// Assign random offset to each triangle vertex
-	vec2 uv1 = uv + hash(vertex1);
-	vec2 uv2 = uv + hash(vertex2);
-	vec2 uv3 = uv + hash(vertex3);
+	vec2 uv1 = uv + hash(vertex1) + vec2(sin(TIME * 0.1 + hash(vertex1).x * 100), cos(TIME * 0.1 + hash(vertex1).y * 100));
+	vec2 uv2 = uv + hash(vertex2) + vec2(sin(TIME * 0.1 + hash(vertex2).x * 100), cos(TIME * 0.1 + hash(vertex2).y * 100));
+	vec2 uv3 = uv + hash(vertex3) + vec2(sin(TIME * 0.1 + hash(vertex3).x * 100), cos(TIME * 0.1 + hash(vertex3).y * 100));
 
 	// Fetch centered gaussian input
 	vec4 G1 = textureLod(tex, uv1, lod) - textureLod(tex, vec2(0), 100);
@@ -251,7 +251,8 @@ vec4 TilingAndBlendingAniso(sampler2D tex, sampler2D var, vec2 uv, int maxAniso,
 	
 	float P = min(ceil(pmax/pmin), maxAniso);
 	
-	float lod = log2(pmax/P);
+	float sbias = 1; //Should be set to 1 ! (Used so we consider bigger samples to filter a bit more)
+	float lod = log2(pmax/P * sbias);
 	
 	P = min(P,ceil(pmax));
 	
@@ -310,7 +311,8 @@ vec4 textureAniso(sampler2D tex, vec2 uv, int maxAniso) {
 	
 	float N = min(ceil(pmax/pmin), maxAniso);
 	
-	float lod = log2(pmax/N);
+	float sbias = 1; //Should be set to 1 ! (Used so we consider bigger samples to filter a bit more)
+	float lod = log2(pmax/N * sbias);
 	
 	N = min(N,ceil(pmax));
 	
@@ -350,51 +352,88 @@ vec3 colorManagement (vec3 color, float exposure, float contrast) {
 
 /////////// MAIN
 
-void main () {
+
+
+
+
+vec3 render_tilingblending (int maxAniso) {
 	vec2 uv = vUv;
 	vec3 lightColor = vec3(1.0, .8, .7) * 3;
-	vec3 ambientColor = vec3(0.35, 0.25, 0.15) * 2;
-	int maxAniso = 1;
+	vec3 ambientColor = vec3(0.15, 0.25, 0.35) * 2;
+	float r = 100;
 
-	//TODO
+	//FETCH
 	vec2 b = TilingAndBlendingAniso(bmap, bmap, uv, maxAniso, MEAN).xy;
 	vec2 v = TilingAndBlendingAniso(bmap, var, uv, maxAniso, VAR).xy;
 	float c = TilingAndBlendingAniso(bmap, var, uv, maxAniso, COV).x;
 	vec3 a = TilingAndBlendingAniso(albedo, albedo, uv, maxAniso, MEAN).rgb;
-	float r = TilingAndBlendingAniso(roughness, roughness, uv, maxAniso, MEAN).r;
-	/*vec2 b = textureAniso(bmap, uv, maxAniso).xy;
-	vec3 m = textureAniso(mmap, uv, maxAniso).xyz;
-	vec3 a = textureAniso(albedo, uv, maxAniso).rgb;
-	float r = textureAniso(roughness, uv, maxAniso).r;*/
-	r = texture(roughness, uv).x;
-	r = pow(r, 0.02);
-	r = map(r, 1, 0, 0, 2000);
-	
-	
+
+	//DATA
 	float meanx = b.x;
 	float meany = b.y;
 	float varx = v.x;
 	float vary = v.y;
 	float covxy = c;
 	float meanr = r;
-	
-	/*float meanx = b.x;
-	float meany = b.y;
-	float varx = m.x - b.x * b.x;
-	float vary = m.y - b.y * b.y;
-	float covxy = m.z - b.x * b.y;*/
+	vec3 meana = a;
+
 
 	vec3 diffuse = getDiffuse(meanx, meany) * lightColor + ambientColor;
 	vec3 specular = getSpecular(meanx, meany, varx, vary, covxy, meanr) * lightColor;
 
-	vec3 color = (a * diffuse * 1) + (specular * 0.1);
-	//color = TilingAndBlendingAniso(albedo, uv, maxAniso, true).rgb;
+	vec3 color = (meana * diffuse * 0.9) + (specular * 0.05);
 
 	color = colorManagement(color, 0.5, 1);
-	FragColor = vec4(color, 1.0);
-	
-	//FragColor = vec4(groundTruth(10), 1.0);
+	return color;
 }
+
+
+
+
+
+vec3 render_texture (int maxAniso) {
+	vec2 uv = vUv;
+	vec3 lightColor = vec3(1.0, .8, .7) * 3;
+	vec3 ambientColor = vec3(0.15, 0.25, 0.35) * 2;
+	float r = 100;
+	
+	//FETCH
+	vec2 b = textureAniso(bmap, uv, maxAniso).xy;
+	vec3 m = textureAniso(mmap, uv, maxAniso).xyz;
+	vec3 a = textureAniso(albedo, uv, maxAniso).rgb;
+
+	//DATA
+	float meanx = b.x;
+	float meany = b.y;
+	float varx = m.x - b.x * b.x;
+	float vary = m.y - b.y * b.y;
+	float covxy = m.z - b.x * b.y;
+	float meanr = r;
+	vec3 meana = a;
+
+
+	vec3 diffuse = getDiffuse(meanx, meany) * lightColor + ambientColor;
+	vec3 specular = getSpecular(meanx, meany, varx, vary, covxy, meanr) * lightColor;
+
+	vec3 color = (meana * diffuse * 0.9) + (specular * 0.05);
+
+	color = colorManagement(color, 0.5, 1);
+	return color;
+}
+
+
+
+
+
+void main () {
+	FragColor = vec4(render_tilingblending(4), 1.0);
+	//FragColor = vec4(textureAniso(albedo, vUv, 16).rgb, 1.0);
+}
+
+
+
+
+
 
 
 
