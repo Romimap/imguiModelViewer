@@ -210,9 +210,9 @@ vec4 TilingAndBlending(sampler2D tex, vec2 uv, float lod, int fetch)
 	float l = 1;
 
 	// Assign random offset to each triangle vertex
-	vec2 uv1 = uv + hash(vertex1) + vec2(sin(TIME * 0.1 + hash(vertex1).x * 100), cos(TIME * 0.1 + hash(vertex1).y * 100));
-	vec2 uv2 = uv + hash(vertex2) + vec2(sin(TIME * 0.1 + hash(vertex2).x * 100), cos(TIME * 0.1 + hash(vertex2).y * 100));
-	vec2 uv3 = uv + hash(vertex3) + vec2(sin(TIME * 0.1 + hash(vertex3).x * 100), cos(TIME * 0.1 + hash(vertex3).y * 100));
+	vec2 uv1 = uv + hash(vertex1);// + vec2(float(vertex1.y * 0.05) * TIME * .3, 0);
+	vec2 uv2 = uv + hash(vertex2);// + vec2(float(vertex2.y * 0.05) * TIME * .3, 0);
+	vec2 uv3 = uv + hash(vertex3);// + vec2(float(vertex3.y * 0.05) * TIME * .3, 0);
 
 	// Fetch centered gaussian input
 	vec4 G1 = textureLod(tex, uv1, lod) - textureLod(tex, vec2(0), 100);
@@ -225,7 +225,6 @@ vec4 TilingAndBlending(sampler2D tex, vec2 uv, float lod, int fetch)
 	float wp3 = w3 / length(vec3(w1, w2, w3));
 	
 	// Variance-preserving / non preserving blending
-
 	vec4 G = vec4(0);
 	if (fetch == MEAN) {
 		G += wp1*G1 + wp2*G2 + wp3*G3;
@@ -381,7 +380,7 @@ vec3 render_tilingblending (int maxAniso) {
 	vec3 diffuse = getDiffuse(meanx, meany) * lightColor + ambientColor;
 	vec3 specular = getSpecular(meanx, meany, varx, vary, covxy, meanr) * lightColor;
 
-	vec3 color = (meana * diffuse * 0.9) + (specular * 0.05);
+	vec3 color = (meana * diffuse * 0.9);// + (specular * 0.05);
 
 	color = colorManagement(color, 0.5, 1);
 	return color;
@@ -415,20 +414,27 @@ vec3 render_texture (int maxAniso) {
 	vec3 diffuse = getDiffuse(meanx, meany) * lightColor + ambientColor;
 	vec3 specular = getSpecular(meanx, meany, varx, vary, covxy, meanr) * lightColor;
 
-	vec3 color = (meana * diffuse * 0.9) + (specular * 0.05);
+	vec3 color = (meana * diffuse * 0.9);// + (specular * 0.05);
 
 	color = colorManagement(color, 0.5, 1);
 	return color;
 }
 
 
+vec3 groundTruth () {
+
+return vec3(0);
+
+}
 
 
 
 void main () {
-	FragColor = vec4(render_tilingblending(4), 1.0);
+	FragColor = vec4(render_tilingblending(1), 1.0);
 	//FragColor = vec4(textureAniso(albedo, vUv, 16).rgb, 1.0);
 }
+
+
 
 
 

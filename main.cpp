@@ -447,8 +447,8 @@ int main(int, char**)
             ImGui::Text("Azimuth: %.3f, Elevation: %.3f, Zoom: %.3f", azimuth, elevation, zoom);
             if (ImGui::Button("Pos1")) {
                 azimuth = 157;
-                elevation = 10;
-                zoom = 1.2;
+                elevation = 42;
+                zoom = 0.266;
 
                 glm::mat4 rotation(1);
                 rotation = glm::rotate(rotation, azimuth * 0.01f, glm::vec3(0, -1, 0));
