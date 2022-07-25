@@ -61,6 +61,7 @@ private:
     float s = 25;
     int mip_levels = 8;
     float max_aniso = 1;
+    int save_n_first_frames = 300;
 
 
 
@@ -531,6 +532,14 @@ void Renderer3D::Draw(ImVec2 size, ImVec4 clearColor, float dt, float t) {
     glDisableVertexAttribArray(4);
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0); //Unbind
+
+    if (save_n_first_frames > 0) {
+        std::string frameName = "screenshots/image_sequence/";
+        frameName += std::to_string(save_n_first_frames);
+        frameName += ".bmp";
+        Screenshot(frameName.c_str());
+        save_n_first_frames--;
+    }
 
     ImGui::Image((ImTextureID)_outputColor, _size, ImVec2(0, 1), ImVec2(1, 0));
 }

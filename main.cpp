@@ -121,9 +121,9 @@ int main(int, char**)
 
 
     ImVec2 size(800, 600);
-    float azimuth = 45;
+    float azimuth = 314;
     float elevation = 45;
-    float zoom = 2;
+    float zoom = 6.7;
 
     glm::mat4 rotation(1);
     rotation = glm::rotate(rotation, azimuth * 0.01f, glm::vec3(0, -1, 0));
@@ -134,11 +134,11 @@ int main(int, char**)
     cameraPosition = newCamPosition;
     const char* fshaderfilepath = "./shaders/fshader.glsl";
     const char* vshaderfilepath = "./shaders/vshader.glsl";
-    static char albedoPath[256] = "textures/anisonoiseTile.png";
+    static char albedoPath[256] = "textures/blue.png";
     static char rougnessPath[256] = "textures/asphalt_Roughness.png";
     static char normalPath[256] = "textures/anisonoiseTile_Normal.png";
 
-    Renderer3D renderer3D(size, cameraPosition, "./models/splane.obj", fshaderfilepath, vshaderfilepath);
+    Renderer3D renderer3D(size, cameraPosition, "./models/bigGrid.obj", fshaderfilepath, vshaderfilepath);
 
     renderer3D.SetAlbedo(albedoPath);
     renderer3D.SetRoughness(rougnessPath);
@@ -419,7 +419,7 @@ int main(int, char**)
             }
 
 
-            renderer3D.Draw(ImVec2(ImGui::GetWindowSize().x - 16, ImGui::GetWindowSize().y - 16), clear_color, deltaTime, time);
+            renderer3D.Draw(/*ImVec2(ImGui::GetWindowSize().x - 16, ImGui::GetWindowSize().y - 16)*/ImVec2(1920, 1080), clear_color, deltaTime, time);
             ImGui::SetCursorPos(ImVec2(20, 20));
             ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
             ImGuizmo::SetDrawlist();
@@ -529,7 +529,7 @@ int main(int, char**)
 
 
         deltaTime = 1.0f / (float)ImGui::GetIO().Framerate;
-        time += deltaTime;
+        time += 1.0f/60.0f;//deltaTime;
 
         // Rendering
         ImGui::Render();

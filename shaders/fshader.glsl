@@ -65,7 +65,7 @@ vec3 viewDirection () {
 
 //Returns the light direction (surface to light)
 vec3 lightDirection () {
-	return normalize(vec3(1,.5, 0)); //0 0.1 1
+	return normalize(vec3(0, .5, 1)); //0 0.1 1
 }
 
 
@@ -159,8 +159,7 @@ float getDiffuse(float meanx, float meany) {
 
 
 
-vec2 hash(vec2 p)
-{
+vec2 hash(vec2 p) {
 	return fract(sin((p) * mat2(127.1, 311.7, 269.5, 183.3) )*43758.5453);
 }
 
@@ -200,8 +199,7 @@ void TriangleGrid(vec2 uv, out float w1, out float w2, out float w3, out ivec2 v
 
 
 // By-Example procedural noise at uv
-vec4 TilingAndBlending(sampler2D tex, vec2 uv, float lod, int fetch)
-{
+vec4 TilingAndBlending(sampler2D tex, vec2 uv, float lod, int fetch) {
 	// Get triangle info
 	float w1, w2, w3;
 	ivec2 vertex1, vertex2, vertex3;
@@ -277,8 +275,6 @@ vec4 TilingAndBlendingAniso(sampler2D tex, sampler2D var, vec2 uv, int maxAniso,
 		N1 += n1;
 		N2 += pow(n1.xy, vec2(2)) + sigma2.xy;
 		NN += n1.x * n1.y + sigma2.z;
-
-
 	}
 	
 	N1 /= P;
@@ -292,11 +288,6 @@ vec4 TilingAndBlendingAniso(sampler2D tex, sampler2D var, vec2 uv, int maxAniso,
 
 
 vec4 textureAniso(sampler2D tex, vec2 uv, int maxAniso) {
-	//Unfiltered
-	if (maxAniso == -1) {
-		return textureLod(tex, uv, 0);
-	}
-
 	vec2 texSize = textureSize(tex, 0);
 	float bias = 1; //Should be set to 1 ! (Used so we consider bigger footprints to filter a bit more)
 	vec2 duvdx = dFdx(vUv) * bias;
@@ -380,9 +371,8 @@ vec3 render_tilingblending (int maxAniso) {
 	vec3 diffuse = getDiffuse(meanx, meany) * lightColor + ambientColor;
 	vec3 specular = getSpecular(meanx, meany, varx, vary, covxy, meanr) * lightColor;
 
-	vec3 color = (meana * diffuse * 0.9);// + (specular * 0.05);
+	vec3 color = (meana * diffuse * 0.) + (specular * 0.05);
 
-	color = colorManagement(color, 0.5, 1);
 	return color;
 }
 
@@ -414,25 +404,61 @@ vec3 render_texture (int maxAniso) {
 	vec3 diffuse = getDiffuse(meanx, meany) * lightColor + ambientColor;
 	vec3 specular = getSpecular(meanx, meany, varx, vary, covxy, meanr) * lightColor;
 
-	vec3 color = (meana * diffuse * 0.9);// + (specular * 0.05);
+	vec3 color = (meana * diffuse * 0.) + (specular * 0.05);
 
-	color = colorManagement(color, 0.5, 1);
 	return color;
 }
 
 
-vec3 groundTruth () {
+vec3 groundTruth (int samples) {
+	vec2 duvdx = dFdx(vUv);
+	vec2 duvdy = dFdy(vUv);
+	
+	vec2 uv = vUv;
+	vec3 lightColor = vec3(1.0, .8, .7) * 3;
+	vec3 ambientColor = vec3(0.15, 0.25, 0.35) * 2;
+	float r = 100;
 
-return vec3(0);
+	vec3 color;
+
+	for (int x = 1; x <= samples; x++) {
+		for (int y = 1; y <= samples; y++) {
+			vec2 uv_curr = uv + duvdx * (float(x)/float(samples + 1) - 0.5) + duvdy * (float(y)/float(samples + 1) - 0.5);
+			vec2 b = TilingAndBlending(bmap, uv_curr, 0, MEAN).xy;
+			vec3 a = TilingAndBlending(albedo, uv_curr, 0, MEAN).rgb;
+			
+				//DATA
+			float meanx = b.x;
+			float meany = b.y;
+			float varx = 0;
+			float vary = 0;
+			float covxy = 0;
+			float meanr = r;
+			vec3 meana = a;
+			
+			vec3 diffuse = getDiffuse(meanx, meany) * lightColor + ambientColor;
+			vec3 specular = getSpecular(meanx, meany, varx, vary, covxy, meanr) * lightColor;
+		
+			color += (meana * diffuse * 0.) + (specular * 0.05);
+			
+		}
+	}
+
+return color / float(samples*samples);
 
 }
 
 
 
 void main () {
-	FragColor = vec4(render_tilingblending(1), 1.0);
+	vec3 color;
+	color = render_tilingblending(16);
+	//color = groundTruth(64);
+	color = colorManagement(color, .75, 1);
+	FragColor = vec4(color, 1.0);
 	//FragColor = vec4(textureAniso(albedo, vUv, 16).rgb, 1.0);
 }
+
 
 
 
