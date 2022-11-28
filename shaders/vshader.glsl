@@ -11,6 +11,7 @@ uniform mat4 viewMatrix;
 uniform mat4 projectionMatrix;
 uniform float TIME;
 
+uniform sampler2D b;
 
 out vec3 vPosition;
 out vec2 vUv;
@@ -22,17 +23,10 @@ void main () {
     gl_Position = projectionMatrix * viewMatrix * modelMatrix * vec4(iPosition, 1.0);
 
     vPosition = iPosition;
-    vUv = iUv*1 + (vec2(0.2, 0) * TIME);
+    vUv = iUv;
     vNormal = iNormal;
     vTangent = iTangent;
     vBitangent = iBitangent;
 }
-
-
-
-
-
-
-
 
 

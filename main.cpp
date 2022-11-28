@@ -134,15 +134,13 @@ int main(int, char**)
     cameraPosition = newCamPosition;
     const char* fshaderfilepath = "./shaders/fshader.glsl";
     const char* vshaderfilepath = "./shaders/vshader.glsl";
-    static char albedoPath[256] = "textures/blue.png";
-    static char rougnessPath[256] = "textures/asphalt_Roughness.png";
-    static char normalPath[256] = "textures/anisonoiseTile_Normal.png";
-
+    
+    static char vpath[256] = "textures/voronoi.png";
+    static char cpath[256] = "textures/c.png";
+    
     Renderer3D renderer3D(size, cameraPosition, "./models/bigGrid.obj", fshaderfilepath, vshaderfilepath);
-
-    renderer3D.SetAlbedo(albedoPath);
-    renderer3D.SetRoughness(rougnessPath);
-    renderer3D.SetNormal(normalPath);
+    renderer3D.SetV(vpath);
+    renderer3D.SetC(cpath);
 
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_CULL_FACE);
@@ -419,7 +417,7 @@ int main(int, char**)
             }
 
 
-            renderer3D.Draw(/*ImVec2(ImGui::GetWindowSize().x - 16, ImGui::GetWindowSize().y - 16)*/ImVec2(1920, 1080), clear_color, deltaTime, time);
+            renderer3D.Draw(ImVec2(ImGui::GetWindowSize().x - 16, ImGui::GetWindowSize().y - 16), clear_color, deltaTime, time);
             ImGui::SetCursorPos(ImVec2(20, 20));
             ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
             ImGuizmo::SetDrawlist();
@@ -427,7 +425,7 @@ int main(int, char**)
             ImGuizmo::SetGizmoSizeClipSpace(1);
             ImGuizmo::SetOrthographic(true);
 
-            const glm::mat4 matrix(1);
+            const glm::mat4 matrix(0.5);
             ImGuizmo::Manipulate((float*)&renderer3D.getViewMatrix()[0][0], (float*)& renderer3D.getProjectionMatrix()[0][0], ImGuizmo::OPERATION::TRANSLATE, ImGuizmo::MODE::WORLD, (float*)& matrix[0][0]);
             //ImGuizmo::DrawCubes((float*)&renderer3D.getViewMatrix()[0][0], (float*)& renderer3D.getProjectionMatrix()[0][0], (float*)& matrix[0][0], 1);
    
@@ -507,16 +505,12 @@ int main(int, char**)
         {
             ImGui::Begin("Set Path");
 
-            if (ImGui::InputText("Albedo path", albedoPath, 256, ImGuiInputTextFlags_EnterReturnsTrue)) {
-                renderer3D.SetAlbedo(albedoPath);
+            if (ImGui::InputText("V path", vpath, 256, ImGuiInputTextFlags_EnterReturnsTrue)) {
+                renderer3D.SetV(vpath);
             }
 
-            if (ImGui::InputText("Roughness path", rougnessPath, 256, ImGuiInputTextFlags_EnterReturnsTrue)) {
-                renderer3D.SetRoughness(rougnessPath);
-            }
-
-            if (ImGui::InputText("Normap path", normalPath, 256, ImGuiInputTextFlags_EnterReturnsTrue)) {
-                renderer3D.SetNormal(normalPath);
+            if (ImGui::InputText("C path", cpath, 256, ImGuiInputTextFlags_EnterReturnsTrue)) {
+                renderer3D.SetC(cpath);
             }
 
             static char screenPath[256] = "screenshots/screen.bmp";
@@ -526,6 +520,7 @@ int main(int, char**)
 
             ImGui::End();
         }
+
 
 
         deltaTime = 1.0f / (float)ImGui::GetIO().Framerate;
