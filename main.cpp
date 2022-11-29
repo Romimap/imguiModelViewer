@@ -135,7 +135,7 @@ int main(int, char**)
     const char* fshaderfilepath = "./shaders/fshader.glsl";
     const char* vshaderfilepath = "./shaders/vshader.glsl";
     
-    static char vpath[256] = "textures/voronoi.png";
+    static char vpath[256] = "textures/v.png";
     static char cpath[256] = "textures/c.png";
     
     Renderer3D renderer3D(size, cameraPosition, "./models/bigGrid.obj", fshaderfilepath, vshaderfilepath);

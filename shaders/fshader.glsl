@@ -63,15 +63,72 @@ void main () {
 	vec2 uv = vUv;
 	vec2 duvdx = dFdx(vUv);
 	vec2 duvdy = dFdy(vUv);
-	float mu = textureGrad(b, uv, duvdx, duvdy).r;
-	float var =  textureGrad(m, uv, duvdx, duvdy).r - mu*mu;
 	
-	
-	vec2 rampfetch = vec2(mu, var);
-	rampfetch = clamp(rampfetch, vec2(0.01), vec2(0.99));
-	vec3 color = textureLod(c, rampfetch, 0).rgb;
-	FragColor = vec4(color, 1.0);
+	if (gl_FragCoord.x > 600) {
+
+
+
+		//NAIVE FILTERING
+		float mu = textureGrad(b, uv, duvdx, duvdy).r;
+		vec2 rampfetch = vec2(mu + 0.5, 0.0);
+		rampfetch = clamp(rampfetch, vec2(0.01), vec2(0.99));
+		vec3 color = textureLod(c, rampfetch, 0).rgb;
+		FragColor = vec4(color, 1.0);
+
+
+
+	} else if (gl_FragCoord.x > 599) {
+		FragColor = vec4(1.0);
+	} else if (gl_FragCoord.x > 300) {
+
+
+
+		//HNPN 13
+		float mu = textureGrad(b, uv, duvdx, duvdy).r;
+		float var =  textureGrad(m, uv, duvdx, duvdy).r - mu*mu;
+		float y = var * 8;
+		
+		vec2 rampfetch = vec2(mu + 0.5, y);
+		rampfetch = clamp(rampfetch, vec2(0.01), vec2(0.99));
+		vec3 color = textureLod(c, rampfetch, 0).rgb;
+		FragColor = vec4(color, 1.0);
+
+
+
+	} else if (gl_FragCoord.x > 299) {
+		FragColor = vec4(1.0);
+	} else {
+
+
+
+		//GROUND TRUTH
+		int s = 16;
+		vec3 color = vec3(0);
+		for (int x = 0; x < s; x++) {
+			for (int y = 0; y < s; y++) {
+				vec2 pos = vec2(float(x) / float(s - 1) - 0.5, float(y) / float(s - 1) - 0.5);
+				vec2 nuv = uv + pos.x * duvdx + pos.y * duvdy;
+				float v = textureLod(b, nuv, 0).r;
+				color += textureLod(c, vec2(v + 0.5, 0.01), 0).rgb;
+			}
+		}
+		FragColor = vec4(color / float(s*s), 1.0);
+
+
+
+	}
 }
+
+
+
+
+
+
+
+
+
+
+
 
 
 

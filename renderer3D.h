@@ -80,7 +80,7 @@ public:
 private:
     void LoadMesh(const char* model);
     void MakeShaderProgram(const char* fragmentShader, const char* vertexShader);
-    unsigned char* Normalize(unsigned char* data, int w, int h, int nbC);
+    void Normalize(float* data, int w, int h, int nbC);
 };
 
 
@@ -148,10 +148,14 @@ void Renderer3D::SetV (const char* path) {
         glBindTexture(GL_TEXTURE_2D, _b);
         int w, h, nbC;
         unsigned char *data = stbi_load(path, &w, &h, &nbC, 0);
-        data = Normalize(data, w, h, nbC);
+        float *fdata = (float*)calloc(w * h * nbC, sizeof(float));
+        for (int i = 0; i < w * h * nbC; i++) {
+            fdata[i] = data[i] / 255.0 - 0.5;
+        }
+        //Normalize(fdata, w, h, nbC);
         printf("%d %d %d\n", w, h, nbC);
-        glTexStorage2D(GL_TEXTURE_2D, mip_levels, GL_RGB8, w, h);
-        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, w, h, GL_RGB, GL_UNSIGNED_BYTE, data);
+        glTexStorage2D(GL_TEXTURE_2D, mip_levels, GL_RGB32F, w, h);
+        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, w, h, GL_RGB, GL_FLOAT, fdata);
         glGenerateMipmap(GL_TEXTURE_2D);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
@@ -163,13 +167,15 @@ void Renderer3D::SetV (const char* path) {
         glBindTexture(GL_TEXTURE_2D, _m);
         int w, h, nbC;
         unsigned char *data = stbi_load(path, &w, &h, &nbC, 0); 
-        data = Normalize(data, w, h, nbC);
-        printf("%d %d %d\n", w, h, nbC);
+        float *fdata = (float*)calloc(w*h*nbC, sizeof(float));
         for (int i = 0; i < w * h * nbC; i++) {
-            data[i] = ((float)(data[i]) / 255.0) * ((float)(data[i]) / 255.0) * 255.0;
+            fdata[i] = data[i] / 255.0 - 0.5;
         }
-        glTexStorage2D(GL_TEXTURE_2D, mip_levels, GL_RGB8, w, h);
-        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, w, h, GL_RGB, GL_UNSIGNED_BYTE, data);
+        for (int i = 0; i < w * h * nbC; i++) {
+            fdata[i] = fdata[i] * fdata[i];
+        }
+        glTexStorage2D(GL_TEXTURE_2D, mip_levels, GL_RGB32F, w, h);
+        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, w, h, GL_RGB, GL_FLOAT, fdata);
         glGenerateMipmap(GL_TEXTURE_2D);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
@@ -184,15 +190,18 @@ void Renderer3D::SetC (const char* path) {
         glGenTextures(1, &_c);
         glBindTexture(GL_TEXTURE_2D, _c);
         int w, h, nbC;
-        unsigned char *data = stbi_load(path, &w, &h, &nbC, 0); 
+        unsigned char *data = stbi_load(path, &w, &h, &nbC, 0);
+        float *fdata = (float*)calloc(w*h*nbC, sizeof(float));
+        for (int i = 0; i < w * h * nbC; i++) {
+            fdata[i] = data[i] / 255.0;
+        }
         printf("%d %d %d\n", w, h, nbC);
-        glTexStorage2D(GL_TEXTURE_2D, mip_levels, GL_RGB8, w, h);
-        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, w, h, GL_RGB, GL_UNSIGNED_BYTE, data);
-        glGenerateMipmap(GL_TEXTURE_2D);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+        glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGB32F, w, h);
+        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, w, h, GL_RGB, GL_FLOAT, fdata);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     }
 }
 
@@ -535,7 +544,7 @@ void Renderer3D::MakeShaderProgram(const char* fragmentShader, const char* verte
 }
 
 
-unsigned char* Renderer3D::Normalize(unsigned char* data, int w, int h, int nbC){
+void Renderer3D::Normalize(float* data, int w, int h, int nbC){
     double* sum = (double*)calloc(nbC, sizeof(double));
     double* N = (double*)calloc(nbC, sizeof(double));
     
@@ -559,8 +568,6 @@ unsigned char* Renderer3D::Normalize(unsigned char* data, int w, int h, int nbC)
             data[pixelid] = normalized;
         }
     }
-
-    return data;
 }
 
 
