@@ -117,14 +117,23 @@ void Renderer3D::SetAlbedo(const char* path) {
 }
 
 void Renderer3D::Screenshot (const char* path) {
-    glBindFramebuffer(GL_FRAMEBUFFER, _FBO); //Bind
-    glViewport(0, 0, _size.x, _size.y);
+   // Bind the texture to be saved
+    glBindTexture(GL_TEXTURE_2D, _outputColor);
 
-    char *pixels = new char[3 * (int)_size.x * (int)_size.y];
-    glReadPixels(0, 0, (int)_size.x, (int)_size.y, GL_RGB, GL_UNSIGNED_BYTE, pixels);
-    stbi_flip_vertically_on_write(1);
-    stbi_write_bmp(path, (int)_size.x, (int)_size.y, 3, pixels);
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    // Get the texture data
+    int width, height, nrChannels;
+    width = _size.x;
+    height = _size.y;
+    nrChannels = 4;
+    unsigned char* data = new unsigned char[width * height * nrChannels];
+    glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+
+    // Save the texture data to a file
+    stbi_write_png(path, width, height, nrChannels, data, 0);
+
+    // Clean up
+    delete[] data;
+    glBindTexture(GL_TEXTURE_2D, 0);
 }
 
 void Renderer3D::Draw(ImVec2 size, float dt, float t) {

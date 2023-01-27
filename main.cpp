@@ -299,7 +299,7 @@ int main(int, char**)
                     fsmarkers.insert(std::make_pair<int, std::string>((int)line, (std::string)strmsg));
                     printf("AFTER\n");
                 } else {
-                    fShaderFile.open(fshaderfilepath);
+                    fShaderFile.open(fshaderfilepath, std::ofstream::out | std::ofstream::trunc);
                     fShaderFile << editorFShader.GetText();
                     fShaderFile.close();
                 }
@@ -333,7 +333,7 @@ int main(int, char**)
                     vsmarkers.insert(std::make_pair<int, std::string>((int)line, (std::string)strmsg));
                     printf("AFTER\n");
                 } else {
-                    vShaderFile.open(vshaderfilepath);
+                    vShaderFile.open(vshaderfilepath, std::ofstream::out | std::ofstream::trunc);
                     vShaderFile << editorVShader.GetText();
                     vShaderFile.close();
                 }
@@ -351,7 +351,7 @@ int main(int, char**)
         }
 
         {
-            ImGui::Begin("Set Path");
+            ImGui::Begin("Params");
 
             if (ImGui::InputText("Albedo path", albedoPath, 256, ImGuiInputTextFlags_EnterReturnsTrue)) {
                 renderer3D.SetAlbedo(albedoPath);
