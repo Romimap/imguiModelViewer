@@ -263,8 +263,8 @@ int main(int, char**)
     // Main loop
     while (!glfwWindowShouldClose(window))
     {
-        ImGui::SetNextWindowPos(ImVec2(0.0f, 0.0f));
-        ImGui::SetNextWindowSize(ImGui::GetIO().DisplaySize);
+        //ImGui::SetNextWindowPos(ImVec2(0.0f, 0.0f));
+        //ImGui::SetNextWindowSize(ImGui::GetIO().DisplaySize);
 
         
         // Poll and handle events (inputs, window resize, etc.)
@@ -286,13 +286,7 @@ int main(int, char**)
         // FRAGMENT SHADER EDITOR
         {
             auto cpos = editorFShader.GetCursorPosition();
-            ImGui::Begin("Fragment Shader", nullptr,
-             ImGuiWindowFlags_NoTitleBar | 
-             ImGuiWindowFlags_NoDecoration | 
-             ImGuiWindowFlags_NoResize |
-             ImGuiWindowFlags_NoBackground);
-            ImGui::SetWindowSize(ImVec2(800, 600), ImGuiCond_FirstUseEver);
-
+            ImGui::Begin("Fragment Shader", nullptr);
 
             if (ImGui::Button("Compile")) {
                 std::string error = renderer3D.SetFShader(editorFShader.GetText());
@@ -326,12 +320,7 @@ int main(int, char**)
         // VERTEX SHADER EDITOR
         {
             auto cpos = editorVShader.GetCursorPosition();
-            ImGui::Begin("Vertex Shader", nullptr,
-             ImGuiWindowFlags_NoTitleBar | 
-             ImGuiWindowFlags_NoDecoration | 
-             ImGuiWindowFlags_NoResize |
-             ImGuiWindowFlags_NoBackground);
-            ImGui::SetWindowSize(ImVec2(800, 600), ImGuiCond_FirstUseEver);
+            ImGui::Begin("Vertex Shader", nullptr);
 
             if (ImGui::Button("Compile")) {
                 vsmarkers.clear();
@@ -361,137 +350,6 @@ int main(int, char**)
             ImGui::End();
         }
 
-        // MODEL VIEWER
-        {
-            ImGui::Begin("Model Viewer", nullptr, 
-             ImGuiWindowFlags_NoTitleBar | 
-             ImGuiWindowFlags_NoDecoration | 
-             ImGuiWindowFlags_NoResize |
-             ImGuiWindowFlags_NoBackground);
-
-            static bool validInput = false;
-            if (ImGui::IsWindowHovered() && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
-                validInput = true;
-            }
-
-            float currentAzimuth = azimuth;
-            float currentElevation = elevation;
-
-            if (validInput) {
-                ImVec2 currentdelta = ImGui::GetMouseDragDelta(ImGuiMouseButton_Left);
-
-                currentAzimuth = azimuth + currentdelta.x;
-                currentElevation = std::min((float)140, std::max((float)-140, elevation + currentdelta.y));
-
-
-                if (ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {
-                    azimuth = currentAzimuth;
-                    elevation = currentElevation;
-                    validInput = false;
-                } 
-        
-                
-
-
-                glm::mat4 rotation(1);
-                rotation = glm::rotate(rotation, currentAzimuth * 0.01f, glm::vec3(0, -1, 0));
-                rotation = glm::rotate(rotation, currentElevation * 0.01f, glm::vec3(-1, 0, 0));
-                glm::vec4 newCamPosition(0, 0, zoom, 1);
-                newCamPosition = rotation * newCamPosition;
-                cameraPosition = newCamPosition;
-            }
-
-            if (ImGui::IsWindowHovered() && ImGui::GetIO().MouseWheel) {
-                zoom += (ImGui::GetIO().MouseWheel * 0.1f) * zoom;
-                zoom = std::min(100.0f, std::max(0.2f, zoom));
-
-
-                glm::mat4 rotation(1);
-                rotation = glm::rotate(rotation, currentAzimuth * 0.01f, glm::vec3(0, -1, 0));
-                rotation = glm::rotate(rotation, currentElevation * 0.01f, glm::vec3(-1, 0, 0));
-                glm::vec4 newCamPosition(0, 0, zoom, 1);
-                newCamPosition = rotation * newCamPosition;
-                cameraPosition = newCamPosition;
-            }
-
-
-            renderer3D.Draw(ImVec2(ImGui::GetWindowSize().x - 16, ImGui::GetWindowSize().y - 16), clear_color, deltaTime, time);
-            ImGui::SetCursorPos(ImVec2(20, 20));
-            ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
-            
-           
-            ImGui::End();
-        }
-
-        {   //CAM CONTROLS
-            ImGui::Begin("Camera Controls", nullptr, 
-             ImGuiWindowFlags_NoTitleBar | 
-             ImGuiWindowFlags_NoDecoration | 
-             ImGuiWindowFlags_NoResize |
-             ImGuiWindowFlags_NoBackground);
-
-
-            ImGui::Text("Camera Position: %.3f, %.3f, %.3f", cameraPosition.x, cameraPosition.y, cameraPosition.z);
-            ImGui::Text("Azimuth: %.3f, Elevation: %.3f, Zoom: %.3f", azimuth, elevation, zoom);
-            if (ImGui::Button("Pos1")) {
-                azimuth = 312;
-                elevation = 27;
-                zoom = 1.2;
-
-                glm::mat4 rotation(1);
-                rotation = glm::rotate(rotation, azimuth * 0.01f, glm::vec3(0, -1, 0));
-                rotation = glm::rotate(rotation, elevation * 0.01f, glm::vec3(-1, 0, 0));
-                glm::vec4 newCamPosition(0, 0, zoom, 1);
-                newCamPosition = rotation * newCamPosition;
-                cameraPosition = newCamPosition;
-            }
-            ImGui::SameLine();
-            if (ImGui::Button("Pos2")) {
-                azimuth = 309;
-                elevation = 27;
-                zoom = 8.3;
-
-                glm::mat4 rotation(1);
-                rotation = glm::rotate(rotation, azimuth * 0.01f, glm::vec3(0, -1, 0));
-                rotation = glm::rotate(rotation, elevation * 0.01f, glm::vec3(-1, 0, 0));
-                glm::vec4 newCamPosition(0, 0, zoom, 1);
-                newCamPosition = rotation * newCamPosition;
-                cameraPosition = newCamPosition;
-            }
-            ImGui::SameLine();
-            if (ImGui::Button("Pos3")) {
-                azimuth = 316;
-                elevation = 40;
-                zoom = 13;
-
-                glm::mat4 rotation(1);
-                rotation = glm::rotate(rotation, azimuth * 0.01f, glm::vec3(0, -1, 0));
-                rotation = glm::rotate(rotation, elevation * 0.01f, glm::vec3(-1, 0, 0));
-                glm::vec4 newCamPosition(0, 0, zoom, 1);
-                newCamPosition = rotation * newCamPosition;
-                cameraPosition = newCamPosition;
-            }
-            ImGui::SameLine();
-            if (ImGui::Button("Pos4")) {
-                azimuth = 326;
-                elevation = 62;
-                zoom = 27;
-
-                glm::mat4 rotation(1);
-                rotation = glm::rotate(rotation, azimuth * 0.01f, glm::vec3(0, -1, 0));
-                rotation = glm::rotate(rotation, elevation * 0.01f, glm::vec3(-1, 0, 0));
-                glm::vec4 newCamPosition(0, 0, zoom, 1);
-                newCamPosition = rotation * newCamPosition;
-                cameraPosition = newCamPosition;
-            }
-
-            ImGui::End();
-        }
-
-        {//DEMO
-            ImGui::ShowDemoWindow();
-        }
-
         {
             ImGui::Begin("Set Path");
 
@@ -512,12 +370,14 @@ int main(int, char**)
         time += deltaTime;
 
         // Rendering
+        
         ImGui::Render();
         int display_w, display_h;
         glfwGetFramebufferSize(window, &display_w, &display_h);
         glViewport(0, 0, display_w, display_h);
         glClearColor(clear_color.x * clear_color.w, clear_color.y * clear_color.w, clear_color.z * clear_color.w, clear_color.w);
         glClear(GL_COLOR_BUFFER_BIT);
+        renderer3D.Draw(ImVec2(ImGui::GetWindowSize().x - 16, ImGui::GetWindowSize().y - 32), clear_color, deltaTime, time);
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
         glfwSwapBuffers(window);

@@ -107,7 +107,7 @@ void Renderer3D::SetAlbedo(const char* path) {
     glBindTexture(GL_TEXTURE_2D, _albedo);
     int w, h, nbC;
     unsigned char *data = stbi_load(path, &w, &h, &nbC, 0);
-    glTexStorage2D(GL_TEXTURE_2D, 16, GL_RGB8, w, h);
+    glTexStorage2D(GL_TEXTURE_2D, 8, GL_RGB8, w, h);
     glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, w, h, GL_RGB, GL_UNSIGNED_BYTE, data);
     glGenerateMipmap(GL_TEXTURE_2D);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
@@ -128,36 +128,36 @@ void Renderer3D::Screenshot (const char* path) {
 }
 
 void Renderer3D::Draw(ImVec2 size, ImVec4 clearColor, float dt, float t) {
-    glBindFramebuffer(GL_FRAMEBUFFER, _FBO); //Bind
-    if (_size.x != size.x || _size.y != size.y) {
-        _size = size;
-        //Create & Attach a texture to it
-        glGenTextures(1, &_outputColor);
-        glBindTexture(GL_TEXTURE_2D, _outputColor);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, _size.x, _size.y, 0,  GL_RGB, GL_UNSIGNED_BYTE, NULL);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);  
-        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, _outputColor, 0);  
-        GLenum DrawBuffers[1] = {GL_COLOR_ATTACHMENT0};
-        glDrawBuffers(1, DrawBuffers);
+    //glBindFramebuffer(GL_FRAMEBUFFER, _FBO); //Bind
+    //if (_size.x != size.x || _size.y != size.y) {
+    //    _size = size;
+    //    //Create & Attach a texture to it
+    //    glGenTextures(1, &_outputColor);
+    //    glBindTexture(GL_TEXTURE_2D, _outputColor);
+    //    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, _size.x, _size.y, 0,  GL_RGB, GL_UNSIGNED_BYTE, NULL);
+    //    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    //    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);  
+    //    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, _outputColor, 0);  
+    //    GLenum DrawBuffers[1] = {GL_COLOR_ATTACHMENT0};
+    //    glDrawBuffers(1, DrawBuffers);
+//
+    //    glGenTextures(1, &_outputDepth);
+    //    glBindTexture(GL_TEXTURE_2D, _outputDepth);
+    //    glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, _size.x, _size.y, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+    //    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    //    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    //    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, _outputDepth, 0);
+//
+    //    if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+    //        printf("ERROR::FRAMEBUFFER:: Framebuffer is not complete!\n");
+    //    
+    //}
 
-        glGenTextures(1, &_outputDepth);
-        glBindTexture(GL_TEXTURE_2D, _outputDepth);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, _size.x, _size.y, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, _outputDepth, 0);
-
-        if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
-            printf("ERROR::FRAMEBUFFER:: Framebuffer is not complete!\n");
-        
-    }
-
-    glViewport(0, 0, _size.x, _size.y);
+    //glViewport(0, 0, _size.x, _size.y);
 
 
-    glClearColor(clearColor.x, clearColor.y, clearColor.z, clearColor.w);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    //glClearColor(clearColor.x, clearColor.y, clearColor.z, clearColor.w);
+    //glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
   
     glUseProgram(_shaderProgram);
 
@@ -189,9 +189,9 @@ void Renderer3D::Draw(ImVec2 size, ImVec4 clearColor, float dt, float t) {
     glDisableVertexAttribArray(3);
     glDisableVertexAttribArray(4);
 
-    glBindFramebuffer(GL_FRAMEBUFFER, 0); //Unbind
+    //glBindFramebuffer(GL_FRAMEBUFFER, 0); //Unbind
 
-    ImGui::Image((ImTextureID)_outputColor, _size, ImVec2(0, 1), ImVec2(1, 0));
+    //ImGui::Image((ImTextureID)_outputColor, _size, ImVec2(0, 1), ImVec2(1, 0));
 }
 
 
