@@ -371,13 +371,13 @@ int main(int, char**)
 
         // Rendering
         
+        renderer3D.Draw(ImGui::GetIO().DisplaySize, deltaTime, time);
         ImGui::Render();
         int display_w, display_h;
         glfwGetFramebufferSize(window, &display_w, &display_h);
         glViewport(0, 0, display_w, display_h);
         glClearColor(clear_color.x * clear_color.w, clear_color.y * clear_color.w, clear_color.z * clear_color.w, clear_color.w);
         glClear(GL_COLOR_BUFFER_BIT);
-        renderer3D.Draw(ImVec2(ImGui::GetWindowSize().x - 16, ImGui::GetWindowSize().y - 32), clear_color, deltaTime, time);
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
         glfwSwapBuffers(window);

@@ -16,10 +16,45 @@ uniform float DTIME;
 
 void main () {
 	vec2 uv = vec2(ivec2(gl_FragCoord.xy)) / vec2(textureSize(albedo, 0));
-	uv *= 1;
+	uv *= 1.0;
 	vec3 color = textureLod(albedo, uv, 0).rgb;
 	FragColor = vec4(color.rgb, 1.0);
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

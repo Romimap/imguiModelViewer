@@ -29,7 +29,7 @@ struct VertexData {
 };
 
 class Renderer3D {
-private:
+public:
     GLuint _FBO = 0;
     GLuint _outputColor = 0;
     GLuint _outputDepth = 0;
@@ -47,7 +47,7 @@ private:
 public:
     Renderer3D(ImVec2 size, const char* model, const char* vertexShader, const char* fragmentShader);
     ~Renderer3D();
-    void Draw(ImVec2 size, ImVec4 clearColor, float dt, float t);
+    void Draw(ImVec2 size, float dt, float t);
     std::string SetFShader(const std::string &code);
     std::string SetVShader(const std::string &code);
 
@@ -127,37 +127,37 @@ void Renderer3D::Screenshot (const char* path) {
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
-void Renderer3D::Draw(ImVec2 size, ImVec4 clearColor, float dt, float t) {
-    //glBindFramebuffer(GL_FRAMEBUFFER, _FBO); //Bind
-    //if (_size.x != size.x || _size.y != size.y) {
-    //    _size = size;
-    //    //Create & Attach a texture to it
-    //    glGenTextures(1, &_outputColor);
-    //    glBindTexture(GL_TEXTURE_2D, _outputColor);
-    //    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, _size.x, _size.y, 0,  GL_RGB, GL_UNSIGNED_BYTE, NULL);
-    //    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    //    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);  
-    //    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, _outputColor, 0);  
-    //    GLenum DrawBuffers[1] = {GL_COLOR_ATTACHMENT0};
-    //    glDrawBuffers(1, DrawBuffers);
-//
-    //    glGenTextures(1, &_outputDepth);
-    //    glBindTexture(GL_TEXTURE_2D, _outputDepth);
-    //    glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, _size.x, _size.y, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
-    //    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    //    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    //    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, _outputDepth, 0);
-//
-    //    if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
-    //        printf("ERROR::FRAMEBUFFER:: Framebuffer is not complete!\n");
-    //    
-    //}
+void Renderer3D::Draw(ImVec2 size, float dt, float t) {
+    glBindFramebuffer(GL_FRAMEBUFFER, _FBO); //Bind
+    if (_size.x != size.x || _size.y != size.y) {
+        _size = size;
+        //Create & Attach a texture to it
+        glGenTextures(1, &_outputColor);
+        glBindTexture(GL_TEXTURE_2D, _outputColor);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, _size.x, _size.y, 0,  GL_RGB, GL_UNSIGNED_BYTE, NULL);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);  
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, _outputColor, 0);  
+        GLenum DrawBuffers[1] = {GL_COLOR_ATTACHMENT0};
+        glDrawBuffers(1, DrawBuffers);
 
-    //glViewport(0, 0, _size.x, _size.y);
+        glGenTextures(1, &_outputDepth);
+        glBindTexture(GL_TEXTURE_2D, _outputDepth);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, _size.x, _size.y, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, _outputDepth, 0);
+
+        if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+            printf("ERROR::FRAMEBUFFER:: Framebuffer is not complete!\n");
+        
+    }
+
+    glViewport(0, 0, _size.x, _size.y);
 
 
-    //glClearColor(clearColor.x, clearColor.y, clearColor.z, clearColor.w);
-    //glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    //glClearColor(0, 0, 0, 0);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
   
     glUseProgram(_shaderProgram);
 
@@ -189,7 +189,12 @@ void Renderer3D::Draw(ImVec2 size, ImVec4 clearColor, float dt, float t) {
     glDisableVertexAttribArray(3);
     glDisableVertexAttribArray(4);
 
-    //glBindFramebuffer(GL_FRAMEBUFFER, 0); //Unbind
+    glBindFramebuffer(GL_FRAMEBUFFER, 0); //Unbind
+
+    ImDrawList *drawList = ImGui::GetBackgroundDrawList();
+    drawList->PushTextureID((ImTextureID)_outputColor);
+    drawList->AddImage((ImTextureID)_outputColor, ImVec2(0, 0), _size);
+    drawList->PopTextureID();
 
     //ImGui::Image((ImTextureID)_outputColor, _size, ImVec2(0, 1), ImVec2(1, 0));
 }
