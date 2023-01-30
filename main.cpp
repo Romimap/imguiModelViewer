@@ -114,9 +114,12 @@ int main(int, char**)
     // Our state
     bool show_demo_window = true;
     bool show_another_window = false;
+    
+    ImVec4 transparent_color = ImVec4(0, 0, 0, 0.8);
+    ImVec4 invisible = ImVec4(0, 0, 0, 0.0);
     ImVec4 clear_color = ImVec4(33.0 / 255.0, 33.0 / 255.0, 35.0 / 255.0, 1.00f);
     ImVec4 muted_color = ImVec4(40.0 / 255.0, 40.0 / 255.0, 45.0 / 255.0, 1.00f);
-    ImVec4 primary_color = ImVec4(75.0 / 255.0, 128.0 / 255.0, 202.0 / 255.0, 1.00f);
+    ImVec4 primary_color = ImVec4(202.0 / 255.0, 128.0 / 255.0, 75.0 / 255.0, 1.00f);
     ImVec4 active_color = ImVec4(180.0 / 255.0, 82.0 / 255.0, 82.0 / 255.0, 1.00f);
 
 
@@ -203,10 +206,16 @@ int main(int, char**)
         "vec3",
         "vec4",
         "mat4",
-        "sampler2D"
+        "sampler2D",
+        "ivec2",
+        "ivec3",
+        "ivec4",
+        "bool",
+        "true",
+        "false"
      };
 
-    for (int i = 0; i < 5; ++i) {
+    for (int i = 0; i < 11; ++i) {
 		lang.mKeywords.insert(std::string(keywords[i]));
 	}
 
@@ -241,9 +250,12 @@ int main(int, char**)
 	// error markers
 	TextEditor::ErrorMarkers vsmarkers;
 	editorVShader.SetErrorMarkers(vsmarkers);
+
+
     ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
-    ImGui::PushStyleColor(ImGuiCol_Border, clear_color);
-    ImGui::PushStyleColor(ImGuiCol_Separator, clear_color);
+    ImGui::PushStyleColor(ImGuiCol_WindowBg, transparent_color);
+    ImGui::PushStyleColor(ImGuiCol_Border, invisible);
+    ImGui::PushStyleColor(ImGuiCol_Separator, invisible);
     ImGui::PushStyleColor(ImGuiCol_ScrollbarBg, clear_color);
     ImGui::PushStyleColor(ImGuiCol_ScrollbarGrab, muted_color);
     ImGui::PushStyleColor(ImGuiCol_Button, muted_color);
@@ -252,6 +264,11 @@ int main(int, char**)
     ImGui::PushStyleColor(ImGuiCol_SliderGrab, primary_color);
     ImGui::PushStyleColor(ImGuiCol_ButtonActive, active_color);
     ImGui::PushStyleColor(ImGuiCol_SliderGrabActive, active_color);
+    ImGui::PushStyleColor(ImGuiCol_TitleBg, muted_color);
+    ImGui::PushStyleColor(ImGuiCol_TitleBgActive, muted_color);
+    ImGui::PushStyleColor(ImGuiCol_Tab, muted_color);
+    ImGui::PushStyleColor(ImGuiCol_TabActive, primary_color);
+
     
         
     //TIME

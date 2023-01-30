@@ -2045,12 +2045,12 @@ const TextEditor::Palette & TextEditor::GetCC29Palette() {
 			0xffca804b, // Preproc identifier
 			0xff656364, // Comment (single line)
 			0xff656364, // Comment (multi line)
-			0xff232121, // Background
+			0x00000000, // Background
 			0xffe0e0e0, // Cursor
 			0x80a06020, // Selection
 			0x800020ff, // ErrorMarker
 			0x00f08000, // Breakpoint
-			0xff454545, // Line number
+			0xffaaaaaa, // Line number
 			0x00705d5b, // Current line fill
 			0x00705d5b, // Current line fill (inactive)
 			0x10705d5b, // Current line edge
