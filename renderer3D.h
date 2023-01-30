@@ -40,6 +40,7 @@ public:
     GLuint _vShader = 0;
     GLuint _fShader = 0;
     GLuint _albedo = 0;
+    GLuint _priority = 0;
 
     std::vector<VertexData> _vertices;
 
@@ -52,6 +53,7 @@ public:
     std::string SetVShader(const std::string &code);
 
     void SetAlbedo(const char* path);
+    void SetPriority(const char* path);
 
     void Screenshot (const char* path);
 
@@ -105,6 +107,20 @@ Renderer3D::~Renderer3D() {
 void Renderer3D::SetAlbedo(const char* path) {
     glGenTextures(1, &_albedo);
     glBindTexture(GL_TEXTURE_2D, _albedo);
+    int w, h, nbC;
+    unsigned char *data = stbi_load(path, &w, &h, &nbC, 0);
+    glTexStorage2D(GL_TEXTURE_2D, 8, GL_RGB8, w, h);
+    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, w, h, GL_RGB, GL_UNSIGNED_BYTE, data);
+    glGenerateMipmap(GL_TEXTURE_2D);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_NEAREST);
+}
+
+void Renderer3D::SetPriority(const char* path) {
+    glGenTextures(1, &_priority);
+    glBindTexture(GL_TEXTURE_2D, _priority);
     int w, h, nbC;
     unsigned char *data = stbi_load(path, &w, &h, &nbC, 0);
     glTexStorage2D(GL_TEXTURE_2D, 8, GL_RGB8, w, h);
@@ -189,6 +205,10 @@ void Renderer3D::Draw(ImVec2 size, float dt, float t) {
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, _albedo);
     glUniform1i(glGetUniformLocation(_shaderProgram, "albedo"), 0);
+
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_2D, _priority);
+    glUniform1i(glGetUniformLocation(_shaderProgram, "priority"), 1);
     
     glDrawArrays(GL_TRIANGLES, 0, _vertices.size());
 

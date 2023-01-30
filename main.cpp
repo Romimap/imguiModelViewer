@@ -137,11 +137,13 @@ int main(int, char**)
     cameraPosition = newCamPosition;
     const char* fshaderfilepath = "./shaders/fshader.glsl";
     const char* vshaderfilepath = "./shaders/vshader.glsl";
-    static char albedoPath[256] = "textures/anisonoiseTile.png";
+    static char albedoPath[256] = "textures/Moss_Color.png";
+    static char priorityPath[256] = "textures/Moss_Displacement.png";
 
     Renderer3D renderer3D(size, "./models/plane.obj", fshaderfilepath, vshaderfilepath);
 
     renderer3D.SetAlbedo(albedoPath);
+    renderer3D.SetPriority(priorityPath);
 
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_CULL_FACE);
@@ -372,6 +374,10 @@ int main(int, char**)
 
             if (ImGui::InputText("Albedo path", albedoPath, 256, ImGuiInputTextFlags_EnterReturnsTrue)) {
                 renderer3D.SetAlbedo(albedoPath);
+            }
+
+            if (ImGui::InputText("Priority path", priorityPath, 256, ImGuiInputTextFlags_EnterReturnsTrue)) {
+                renderer3D.SetPriority(priorityPath);
             }
 
             static char screenPath[256] = "screenshots/screen.bmp";
