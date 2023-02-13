@@ -32,7 +32,3 @@ void main () {
     vTangent = iTangent;
     vBitangent = iBitangent;
 }
-
-
-
-

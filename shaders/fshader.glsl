@@ -35,7 +35,7 @@ void getSquareGrid (vec2 uv, out ivec2 vertex, out float w, bool offset = false)
 	vertex = ivec2(uv - 0.5);
 }
 
-vec3 dualTilingAndBlending (vec2 uv, sampler2D tex, vec2 duvx, vec2 duvy) {
+vec3 dualTilingAndBlending (vec2 uv, sampler2D tex, float k, vec2 duvx, vec2 duvy) {
 	ivec2 v1, v2;
 	float w1, w2;
 
@@ -48,14 +48,18 @@ vec3 dualTilingAndBlending (vec2 uv, sampler2D tex, vec2 duvx, vec2 duvy) {
 	vec3 G2 = textureGrad(tex, uv + hash(v2), duvx, duvy).rgb - E;
 
 	float w3 = (1.0 - w1) * (1.0 - w2);
-	w3 = pow(w3, 25.0);
+	w3 = pow(w3, 1000.0);
+
+	w1 = pow(w1, k);
+	w2 = pow(w2, k);
+
 	float W1 = w1 / sqrt(w1*w1 + w2*w2 + w3*w3);
 	float W2 = w2 / sqrt(w1*w1 + w2*w2 + w3*w3);
 	
 	return G1 * W1 + G2 * W2 + E;
 }
 
-vec3 dualMaxPriorityBlending (vec2 uv, sampler2D tex, sampler2D p, vec2 duvx, vec2 duvy) {
+vec3 dualMaxPriorityBlending (vec2 uv, sampler2D tex, sampler2D p, float k, vec2 duvx, vec2 duvy, bool symetrize = true) {
 	ivec2 v1, v2;
 	float w1, w2;
 
@@ -67,18 +71,48 @@ vec3 dualMaxPriorityBlending (vec2 uv, sampler2D tex, sampler2D p, vec2 duvx, ve
 	vec3 G2 = textureGrad(tex, uv + hash(v2), duvx, duvy).rgb;
 	vec3 P2 = textureGrad(p  , uv + hash(v2), duvx, duvy).rgb;
 
-	if (P1.x + w1 > P2.x + w2) return G1;
+	w1 = pow(w1, k);
+	w2 = pow(w2, k);
+	
+	//Center around 0.5
+	P1 -= textureLod(p, vec2(0.5), 100).rgb;
+	P2 -= textureLod(p, vec2(0.5), 100).rgb;
+	
+	float wm = 4.0;
+	w1 *= wm;
+	w2 *= wm;
+	
+	float wp = 0.5;
+	w1 = pow(w1, wp);
+	w2 = pow(w2, wp);
+	
+	if (symetrize  && P1.x + w1 > -P2.x + w2) return G1;
+	if (!symetrize && P1.x + w1 > P2.x + w2) return G1;
+	
 	return G2;
 }
 
+const float zoom = 1.0;
+const float scrollspeed = 0.00;
 void main () {
 	vec2 uv = vec2(ivec2(gl_FragCoord.xy)) / vec2(textureSize(albedo, 0));
-	uv = uv * 0.25;
+	uv = uv * zoom + vec2(TIME * zoom * scrollspeed);
 
-	vec3 color = dualTilingAndBlending(uv, albedo, dFdx(uv), dFdy(uv));
+	vec3 color = dualMaxPriorityBlending(uv, albedo, priority, 1.0, dFdx(uv), dFdy(uv), true);
+	//color = texture(albedo, uv).rgb;
 
 	FragColor = vec4(color, 1.0);
 }
+
+
+
+
+
+
+
+
+
+
 
 
 
